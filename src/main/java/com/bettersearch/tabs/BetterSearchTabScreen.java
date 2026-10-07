@@ -557,6 +557,11 @@ public class BetterSearchTabScreen extends TabScreen {
                 closeInline();
                 return true;
             }
+            // Esc goes back to the Better Search list instead of exiting to game
+            if (key == GLFW_KEY_ESCAPE) {
+                closeInline();
+                return true;
+            }
             return super.keyPressed(input);
         }
 
