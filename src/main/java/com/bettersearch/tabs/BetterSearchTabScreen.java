@@ -210,6 +210,21 @@ public class BetterSearchTabScreen extends TabScreen {
         // (mouse clicks on cards would otherwise leave focus nowhere)
         // Harmless when already focused — does not move the caret.
         searchBox.setFocused(true);
+
+        // Rebuilds create brand-new card widgets whose hover state is stale until
+        // the mouse moves again — clicks would silently do nothing. Re-dispatch
+        // hover at the current cursor position (same pattern Meteor uses itself).
+        refreshHover();
+    }
+
+    private void refreshHover() {
+        try {
+            var mc = meteordevelopment.meteorclient.MeteorClient.mc;
+            double s = mc.getWindow().getScaleFactor();
+            double mx = mc.mouse.getX() * s;
+            double my = mc.mouse.getY() * s;
+            if (list != null) list.mouseMoved(mx, my, mx, my);
+        } catch (Exception ignored) {}
     }
 
     /** Empty query: FULL module list grouped by category (Wurst shows everything with category). */
@@ -553,6 +568,8 @@ public class BetterSearchTabScreen extends TabScreen {
         cf.add(theme.label("Chat Feedback: "));
         WCheckbox cfC = cf.add(theme.checkbox(m.chatFeedback)).widget();
         cfC.action = () -> m.chatFeedback = cfC.checked;
+
+        refreshHover();
     }
 
     @Override
