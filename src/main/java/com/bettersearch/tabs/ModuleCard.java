@@ -4,6 +4,7 @@ import com.bettersearch.search.ModuleSearch;
 import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.widgets.pressable.WPressable;
 import meteordevelopment.meteorclient.utils.render.color.Color;
+import net.minecraft.client.gui.Click;
 
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT;
@@ -117,6 +118,14 @@ public class ModuleCard extends WPressable {
         r.quad(x + w - d, y, d, d, GuiRenderer.CIRCLE, c);
         r.quad(x, y + h - d, d, d, GuiRenderer.CIRCLE, c);
         r.quad(x + w - d, y + h - d, d, d, GuiRenderer.CIRCLE, c);
+    }
+
+    @Override
+    public boolean mouseClicked(Click click, boolean doubled) {
+        // Meteor only refreshes hover on mouse motion, so a rebuilt card under a
+        // stationary cursor would eat clicks. Recompute for the click position.
+        mouseOver = isOver(click.x(), click.y());
+        return super.mouseClicked(click, doubled);
     }
 
     @Override

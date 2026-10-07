@@ -107,6 +107,12 @@ public class BetterSearchTabScreen extends TabScreen {
             renderer.text(s, x + width / 2 - tw / 2, y + theme.scale(5),
                 mouseOver ? theme.textColor() : theme.textSecondaryColor(), false);
         }
+
+        @Override
+        public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
+            mouseOver = isOver(click.x(), click.y());
+            return super.mouseClicked(click, doubled);
+        }
     }
 
     @Override
@@ -211,10 +217,10 @@ public class BetterSearchTabScreen extends TabScreen {
         // Harmless when already focused — does not move the caret.
         searchBox.setFocused(true);
 
-        // Rebuilds create brand-new card widgets whose hover state is stale until
-        // the mouse moves again — clicks would silently do nothing. Re-dispatch
-        // hover at the current cursor position (same pattern Meteor uses itself).
-        refreshHover();
+        // Rebuilds create brand-new card widgets. Their bounds are only computed
+        // on the next render, so refresh hover after that (same pattern Meteor
+        // uses itself) — clicks then work without moving the mouse first.
+        taskAfterRender = () -> refreshHover();
     }
 
     private void refreshHover() {
@@ -569,7 +575,7 @@ public class BetterSearchTabScreen extends TabScreen {
         WCheckbox cfC = cf.add(theme.checkbox(m.chatFeedback)).widget();
         cfC.action = () -> m.chatFeedback = cfC.checked;
 
-        refreshHover();
+        taskAfterRender = () -> refreshHover();
     }
 
     @Override
