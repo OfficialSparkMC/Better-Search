@@ -4,6 +4,8 @@ import com.bettersearch.BetterSearchAddon;
 import com.bettersearch.modules.BetterSearchModule;
 import com.bettersearch.search.ModuleSearch;
 import com.bettersearch.search.UsageTracker;
+import meteordevelopment.meteorclient.events.meteor.ActiveModulesChangedEvent;
+import meteordevelopment.meteorclient.events.meteor.ModuleBindChangedEvent;
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.tabs.Tab;
 import meteordevelopment.meteorclient.gui.tabs.TabScreen;
@@ -22,6 +24,7 @@ import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.input.KeyInput;
 
 import java.util.ArrayList;
@@ -63,6 +66,10 @@ public class BetterSearchTabScreen extends TabScreen {
 
     /** Dedicated holder for inline settings so Settings.tick() can only rebuild settings, never our view. */
     private WVerticalList inlineSettingsHolder = null;
+
+    /** Inline bind editor + active box, kept live via Meteor's change events (like its own screen). */
+    private WKeybind inlineKeybind = null;
+    private WCheckbox inlineActiveBox = null;
 
     /** Last right-clicked module — stays outlined in the list. */
     private Module outlinedModule = null;
@@ -524,6 +531,8 @@ public class BetterSearchTabScreen extends TabScreen {
         BetterSearchAddon.LOG.info("[BetterSearch] inline CLOSE");
         inlineModule = null;
         inlineSettingsHolder = null;
+        inlineKeybind = null;
+        inlineActiveBox = null;
         refreshResults();
         searchBox.setFocused(true);
     }
@@ -555,15 +564,15 @@ public class BetterSearchTabScreen extends TabScreen {
         back.action = this::closeInline;
         top.add(back).widget();
         top.add(theme.label(m.title, true)).expandX().widget();
-        WCheckbox activeBox = theme.checkbox(m.isActive());
-        activeBox.action = () -> {
-            if (m.isActive() != activeBox.checked) {
+        inlineActiveBox = theme.checkbox(m.isActive());
+        inlineActiveBox.action = () -> {
+            if (m.isActive() != inlineActiveBox.checked) {
                 m.toggle();
                 UsageTracker.record(m);
                 UsageTracker.save();
             }
         };
-        top.add(activeBox).right().widget();
+        top.add(inlineActiveBox).right().widget();
         menu.add(top).expandX().widget();
 
         WLabel desc = menu.add(theme.label(m.description)).expandX().widget();
@@ -602,10 +611,10 @@ public class BetterSearchTabScreen extends TabScreen {
 
         WHorizontalList bind = bindSection.add(theme.horizontalList()).expandX().widget();
         bind.add(theme.label("Bind: "));
-        WKeybind keybind = bind.add(theme.keybind(m.keybind)).expandX().widget();
-        keybind.actionOnSet = () -> Modules.get().setModuleToBind(m);
+        inlineKeybind = bind.add(theme.keybind(m.keybind)).expandX().widget();
+        inlineKeybind.actionOnSet = () -> Modules.get().setModuleToBind(m);
         WButton bindReset = bind.add(theme.button(GuiRenderer.RESET)).expandCellX().right().widget();
-        bindReset.action = keybind::resetBind;
+        bindReset.action = inlineKeybind::resetBind;
         bindReset.tooltip = "Reset";
 
         WHorizontalList tobr = bindSection.add(theme.horizontalList()).widget();
@@ -628,6 +637,22 @@ public class BetterSearchTabScreen extends TabScreen {
             try {
                 inlineModule.settings.tick(inlineSettingsHolder, theme);
             } catch (Exception ignored) {}
+        }
+    }
+
+    // Same live refresh Meteor's own module screen does: the bind value is set
+    // globally on capture, and these events tell the open view to repaint.
+    @EventHandler
+    private void onModuleBindChanged(ModuleBindChangedEvent event) {
+        if (inlineModule != null && event.module == inlineModule && inlineKeybind != null) {
+            inlineKeybind.reset();
+        }
+    }
+
+    @EventHandler
+    private void onActiveModulesChanged(ActiveModulesChangedEvent event) {
+        if (inlineModule != null && inlineActiveBox != null) {
+            inlineActiveBox.checked = inlineModule.isActive();
         }
     }
 
