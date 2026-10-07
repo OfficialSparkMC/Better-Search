@@ -7,9 +7,12 @@ import com.bettersearch.search.UsageTracker;
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.tabs.Tab;
 import meteordevelopment.meteorclient.gui.tabs.TabScreen;
+import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.WWidget;
+import meteordevelopment.meteorclient.gui.widgets.WKeybind;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
+import meteordevelopment.meteorclient.gui.widgets.containers.WSection;
 import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WView;
 import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
@@ -528,6 +531,28 @@ public class BetterSearchTabScreen extends TabScreen {
         inlineSettingsHolder = theme.verticalList();
         inlineSettingsHolder.add(theme.settings(m.settings)).expandX().widget();
         menu.add(inlineSettingsHolder).expandX().widget();
+
+        // Bind section (mirrors Meteor's module screen so binds can be edited inline).
+        WSection bindSection = theme.section("Bind", true);
+        menu.add(bindSection).expandX().widget();
+
+        WHorizontalList bind = bindSection.add(theme.horizontalList()).expandX().widget();
+        bind.add(theme.label("Bind: "));
+        WKeybind keybind = bind.add(theme.keybind(m.keybind)).expandX().widget();
+        keybind.actionOnSet = () -> Modules.get().setModuleToBind(m);
+        WButton bindReset = bind.add(theme.button(GuiRenderer.RESET)).expandCellX().right().widget();
+        bindReset.action = keybind::resetBind;
+        bindReset.tooltip = "Reset";
+
+        WHorizontalList tobr = bindSection.add(theme.horizontalList()).widget();
+        tobr.add(theme.label("Toggle on bind release: "));
+        WCheckbox tobrC = tobr.add(theme.checkbox(m.toggleOnBindRelease)).widget();
+        tobrC.action = () -> m.toggleOnBindRelease = tobrC.checked;
+
+        WHorizontalList cf = bindSection.add(theme.horizontalList()).widget();
+        cf.add(theme.label("Chat Feedback: "));
+        WCheckbox cfC = cf.add(theme.checkbox(m.chatFeedback)).widget();
+        cfC.action = () -> m.chatFeedback = cfC.checked;
     }
 
     @Override
@@ -565,12 +590,17 @@ public class BetterSearchTabScreen extends TabScreen {
         int key = input.key();
 
         if (inlineModule != null) {
-            if (key == GLFW_KEY_LEFT || key == GLFW_KEY_BACKSPACE) {
+            // While capturing a new bind, let the keybind widget receive every key
+            boolean binding = false;
+            try {
+                binding = Modules.get().isBinding();
+            } catch (Exception ignored) {}
+            if (!binding && (key == GLFW_KEY_LEFT || key == GLFW_KEY_BACKSPACE)) {
                 closeInline();
                 return true;
             }
             // Esc goes back to the Better Search list instead of exiting to game
-            if (key == GLFW_KEY_ESCAPE) {
+            if (!binding && key == GLFW_KEY_ESCAPE) {
                 closeInline();
                 return true;
             }
