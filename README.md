@@ -23,6 +23,13 @@ Credits: **Turbo**.
   Typing filters to a flat list with `category` shown on every row.
 - **Scrollable**: results in a scrollable view with scrollbar.
   Mouse wheel + drag work; search box stays fixed on top.
+- **Multiple modules per line**: `columns` setting (1-3, default 1) packs modules
+  into a grid; selected cell dot turns yellow.
+- **Cursor first**: search box is focused with cursor at end on open and after
+  every refresh, so typing filters instantly.
+- **Perf tweaks**: per-module searchable data cached (lowercased once, setting titles
+  cached); excellent name/title hits skip description/settings passes; Levenshtein
+  skipped when length difference alone exceeds the threshold (incl. per-word).
 - **Fuzzy matching**: exact → prefix → word-prefix (`aura kill` → `Kill Aura`) →
   all-words → substring → subsequence (`kla`) → typo-tolerant Levenshtein.
 - **Searches everything**: name, title, description, category (`combat`),
@@ -90,6 +97,7 @@ Aliases: `.bs`, `.bsearch`, `.navigator`, `.find`.
 | `search-settings` | true | Match setting names |
 | `search-tags` | true | Match aliases + `@SearchTags` |
 | `panel-width` | 500 | Search panel width (300-800) |
+| `columns` | 1 | Modules per line grid (1-3) |
 | `row-gap` | 2 | Vertical gap between rows = row size/density (0-12) |
 | `row-inner-gap` | 4 | Horizontal gap inside a row (0-12) |
 | `show-dot` | true | Show `●/○` active dot |

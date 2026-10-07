@@ -61,15 +61,20 @@ public final class FuzzyMatcher {
         }
 
         // 6 - levenshtein typo tolerance, thresholded by length (like Meteor's text.length()/2 rule)
+        // Perf: skip expensive matrix when length difference alone exceeds the threshold
+        int threshold = Math.max(1, q.length() / 2);
+        if (Math.abs(t.length() - q.length()) > threshold + 2) {
+            return Integer.MAX_VALUE;
+        }
         int lev = levenshtein(q, t);
         // Compare against the best word too, so "kil" still finds "kill"
         int bestWord = Integer.MAX_VALUE;
         for (String w : tWords) {
+            if (Math.abs(w.length() - q.length()) > threshold + 2) continue;
             int d = levenshtein(q, w);
             if (d < bestWord) bestWord = d;
         }
         int best = Math.min(lev, bestWord);
-        int threshold = Math.max(1, q.length() / 2);
         if (best <= threshold) {
             return 1000 + best * 10;
         }

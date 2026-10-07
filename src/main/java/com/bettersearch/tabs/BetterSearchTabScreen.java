@@ -83,6 +83,12 @@ public class BetterSearchTabScreen extends TabScreen {
         scroll.add(list).expandX().widget();
 
         refreshResults();
+
+        // Cursor first: focus search immediately so typing filters instantly
+        searchBox.setFocused(true);
+        try {
+            searchBox.setCursorMax();
+        } catch (Exception ignored) {}
     }
 
     private BetterSearchModule config() {
@@ -127,6 +133,9 @@ public class BetterSearchTabScreen extends TabScreen {
 
     /** Empty query: FULL module list grouped by category (Wurst shows everything with category). */
     private void refreshGrouped(boolean learn) {
+        BetterSearchModule cfg = config();
+        int columns = cfg != null ? Math.max(1, Math.min(3, cfg.columns.get())) : 1;
+
         List<ModuleSearch.Result> flat = new ArrayList<>();
 
         for (Category category : Modules.loopCategories()) {
@@ -147,10 +156,20 @@ public class BetterSearchTabScreen extends TabScreen {
                 header.color(theme.textSecondaryColor());
             } catch (Exception ignored) {}
 
+            List<ModuleSearch.Result> results = new ArrayList<>();
             for (Module m : group) {
-                ModuleSearch.Result r = new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m));
-                flat.add(r);
-                addRow(r, flat.size() - 1, false);
+                results.add(new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m)));
+            }
+
+            if (columns <= 1) {
+                for (ModuleSearch.Result r : results) {
+                    flat.add(r);
+                    addRow(r, flat.size() - 1, false);
+                }
+            } else {
+                int base = flat.size();
+                flat.addAll(results);
+                addGrid(results, base);
             }
         }
 
@@ -163,10 +182,16 @@ public class BetterSearchTabScreen extends TabScreen {
         try {
             footer.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
+
+        // Cursor first: keep typing focused after rebuild
+        searchBox.setFocused(true);
     }
 
     /** Non-empty query: flat fuzzy-ranked list with category shown per row (Wurst-style). */
     private void refreshFiltered(String query, int max, boolean desc, boolean sett, boolean tags, boolean learn) {
+        BetterSearchModule cfg = config();
+        int columns = cfg != null ? Math.max(1, Math.min(3, cfg.columns.get())) : 1;
+
         List<ModuleSearch.Result> found = ModuleSearch.search(query, desc, sett, tags, max);
         if (!learn) {
             found = found.stream()
@@ -188,10 +213,65 @@ public class BetterSearchTabScreen extends TabScreen {
             }
         }
 
-        if (found.isEmpty()) return;
+        if (found.isEmpty()) {
+            searchBox.setFocused(true);
+            return;
+        }
 
-        for (int i = 0; i < found.size(); i++) {
-            addRow(found.get(i), i, true);
+        if (columns <= 1) {
+            for (int i = 0; i < found.size(); i++) {
+                addRow(found.get(i), i, true);
+            }
+        } else {
+            addGrid(found, 0);
+        }
+
+        searchBox.setFocused(true);
+    }
+
+    /** Multiple modules per line: grid rows with N compact cards each. */
+    private void addGrid(List<ModuleSearch.Result> results, int baseIndex) {
+        BetterSearchModule cfg = config();
+        int columns = Math.max(2, Math.min(3, cfg != null ? cfg.columns.get() : 2));
+        int innerGap = cfg != null ? cfg.rowInnerGap.get() : 4;
+        boolean showDot = cfg == null || cfg.showDot.get();
+
+        for (int i = 0; i < results.size(); i += columns) {
+            WHorizontalList row = theme.horizontalList();
+            row.spacing = innerGap;
+
+            for (int j = 0; j < columns && i + j < results.size(); j++) {
+                ModuleSearch.Result r = results.get(i + j);
+                int flatIndex = baseIndex + i + j;
+                boolean isSelected = flatIndex == selected;
+                boolean active = r.module().isActive();
+
+                WHorizontalList cell = theme.horizontalList();
+                cell.spacing = 2;
+
+                if (showDot) {
+                    var dot = cell.add(theme.label(active ? "●" : "○")).widget();
+                    try {
+                        // Yellow = keyboard-selected so grid selection stays visible
+                        if (isSelected) dot.color(Color.YELLOW);
+                        else dot.color(active ? Color.GREEN : Color.GRAY);
+                    } catch (Exception ignored) {}
+                }
+
+                WWidget modWidget = theme.module(r.module());
+                int uses = UsageTracker.getCount(r.module());
+                String state = active ? "ON" : "OFF";
+                modWidget.tooltip = r.matchedText()
+                    + "  [" + r.module().category.name + "]  (" + state + ")"
+                    + "\n" + r.module().description
+                    + (uses > 0 ? "\nUsed " + uses + "x" : "")
+                    + "\nLeft-click toggle • Right-click settings";
+                cell.add(modWidget).expandX();
+
+                row.add(cell).expandX().widget();
+            }
+
+            list.add(row).expandX().widget();
         }
     }
 
@@ -212,7 +292,8 @@ public class BetterSearchTabScreen extends TabScreen {
         if (showDot) {
             var dot = row.add(theme.label(active ? "●" : "○")).widget();
             try {
-                dot.color(active ? Color.GREEN : Color.GRAY);
+                if (isSelected) dot.color(Color.YELLOW);
+                else dot.color(active ? Color.GREEN : Color.GRAY);
             } catch (Exception ignored) {}
         }
 

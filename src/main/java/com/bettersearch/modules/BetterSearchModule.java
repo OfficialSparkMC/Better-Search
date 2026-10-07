@@ -76,6 +76,15 @@ public class BetterSearchModule extends Module {
         .build()
     );
 
+    public final Setting<Integer> columns = sgAppearance.add(new IntSetting.Builder()
+        .name("columns")
+        .description("Modules per line (grid). 1 = classic list.")
+        .defaultValue(1)
+        .min(1)
+        .sliderMax(3)
+        .build()
+    );
+
     public final Setting<Integer> rowGap = sgAppearance.add(new IntSetting.Builder()
         .name("row-gap")
         .description("Vertical gap between rows (row size / density).")
