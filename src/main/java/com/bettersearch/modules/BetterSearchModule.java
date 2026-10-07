@@ -156,6 +156,20 @@ public class BetterSearchModule extends Module {
         .build()
     );
 
+    public final Setting<Boolean> inlineOutline = sgAppearance.add(new BoolSetting.Builder()
+        .name("inline-outline")
+        .description("Outline the right-clicked module while its settings are open inline.")
+        .defaultValue(true)
+        .build()
+    );
+
+    public final Setting<Boolean> draggablePanel = sgAppearance.add(new BoolSetting.Builder()
+        .name("draggable-panel")
+        .description("Show a drag handle to move the Search panel. Off = fixed centered (clean).")
+        .defaultValue(false)
+        .build()
+    );
+
     public BetterSearchModule() {
         super(BetterSearchAddon.CATEGORY, "better-search", "Wurst-like Navigator search tab for all modules. Right-Ctrl opens it. By Turbo.", "navigator", "search", "find", "bs");
         keybind.set(true, GLFW_KEY_RIGHT_CONTROL, 0);

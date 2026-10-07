@@ -7,6 +7,7 @@ import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.tabs.Tab;
 import meteordevelopment.meteorclient.gui.tabs.TabScreen;
 import meteordevelopment.meteorclient.gui.widgets.WLabel;
+import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WView;
@@ -39,9 +40,9 @@ import static org.lwjgl.glfw.GLFW.*;
 public class BetterSearchTabScreen extends TabScreen {
     private WTextBox searchBox;
     private WLabel statusLabel;
-    private WVerticalList list;
-    private WVerticalList panel;
+    private WDragPanel panel;
     private WView scroll;
+    private WVerticalList list;
 
     /** Flat list in display order for keyboard nav (grouped mode is flattened). */
     private List<ModuleSearch.Result> current = List.of();
@@ -50,17 +51,95 @@ public class BetterSearchTabScreen extends TabScreen {
     /** Non-null while inline (locked) settings are open. */
     private Module inlineModule = null;
 
+    /** Session-persistent drag offset for the panel. */
+    private static double savedDragX = 0;
+    private static double savedDragY = 0;
+
     public BetterSearchTabScreen(GuiTheme theme, Tab tab) {
         super(theme, tab);
     }
 
+    /** Fixed panel that can optionally be dragged (no WWindow, no movable-window style). */
+    private static class WDragPanel extends WVerticalList {
+        double dragX;
+        double dragY;
+
+        @Override
+        protected void onCalculateWidgetPositions() {
+            super.onCalculateWidgetPositions();
+            if (dragX != 0 || dragY != 0) {
+                for (meteordevelopment.meteorclient.gui.utils.Cell<?> cell : cells) {
+                    cell.move(dragX, dragY);
+                }
+            }
+        }
+    }
+
+    /** Thin drag handle shown only when draggable-panel is on. */
+    private class WDragHandle extends WWidget {
+        private boolean dragging;
+
+        @Override
+        protected void onCalculateSize() {
+            width = theme.scale(480);
+            double minWidth = theme.scale(this.minWidth);
+            if (width < minWidth) width = minWidth;
+            height = theme.textHeight() + theme.scale(6);
+        }
+
+        @Override
+        protected void onRender(meteordevelopment.meteorclient.gui.renderer.GuiRenderer renderer, double mouseX, double mouseY, double delta) {
+            String s = "⠿ Better Search — drag me • by Turbo";
+            double tw = theme.textWidth(s);
+            renderer.text(s, x + width / 2 - tw / 2, y + theme.scale(3), theme.textSecondaryColor(), false);
+        }
+
+        @Override
+        public boolean onMouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
+            if (mouseOver && click.button() == GLFW_MOUSE_BUTTON_LEFT) {
+                dragging = true;
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean onMouseReleased(net.minecraft.client.gui.Click click) {
+            dragging = false;
+            return false;
+        }
+
+        @Override
+        public void onMouseMoved(double mouseX, double mouseY, double lastMouseX, double lastMouseY) {
+            if (!dragging || panel == null) return;
+            double dx = mouseX - lastMouseX;
+            double dy = mouseY - lastMouseY;
+            savedDragX = clamp(savedDragX + dx, -420, 420);
+            savedDragY = clamp(savedDragY + dy, -40, 420);
+            panel.dragX = savedDragX;
+            panel.dragY = savedDragY;
+            panel.invalidate();
+        }
+
+        private double clamp(double v, double min, double max) {
+            return Math.max(min, Math.min(max, v));
+        }
+    }
+
     @Override
     public void initWidgets() {
-        // Fixed modern panel: centered, customizable width, NOT draggable (no WWindow).
-        panel = theme.verticalList();
+        // Fixed modern panel: centered, customizable width, optionally draggable (no WWindow).
+        panel = new WDragPanel();
         panel.spacing = 6;
         add(panel).centerX().marginTop(46).widget();
         panel.minWidth = 500;
+        panel.dragX = savedDragX;
+        panel.dragY = savedDragY;
+
+        BetterSearchModule cfg = config();
+        if (cfg != null && cfg.draggablePanel.get()) {
+            panel.add(new WDragHandle()).expandX().widget();
+        }
 
         searchBox = panel.add(theme.textBox("", "Search modules... (Right-Ctrl to open)")).expandX().widget();
         searchBox.setFocused(true);
@@ -357,6 +436,23 @@ public class BetterSearchTabScreen extends TabScreen {
         try {
             desc.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
+
+        // Outlined context card for the right-clicked module (toggleable via inline-outline)
+        BetterSearchModule cfg = config();
+        if (cfg == null || cfg.inlineOutline.get()) {
+            ModuleSearch.Result r = new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m));
+            ModuleCard context = makeCard(r, -1, rowMeta(r, true));
+            context.selected = false;
+            context.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
+            context.onToggle = () -> {
+                m.toggle();
+                UsageTracker.record(m);
+                UsageTracker.save();
+                showInline();
+            };
+            context.onSettings = () -> {};
+            list.add(context).expandX().widget();
+        }
 
         list.add(theme.label("Locked in Better Search (non-draggable) • by Turbo")).expandX().widget();
         list.add(theme.settings(m.settings)).expandX().widget();

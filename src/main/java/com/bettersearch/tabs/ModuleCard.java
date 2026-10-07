@@ -28,6 +28,9 @@ public class ModuleCard extends WPressable {
     /** Right-side meta text (category/state). Null = hidden (compact grid). */
     public String meta;
 
+    /** Outline border (e.g. module whose settings are open). Null = none. */
+    public Color outline = null;
+
     public Runnable onToggle;
     public Runnable onSettings;
 
@@ -65,6 +68,12 @@ public class ModuleCard extends WPressable {
     protected void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta) {
         Color bg = (selected || mouseOver) ? BG_HOVER : BG;
         double rad = theme.scale(radius);
+
+        if (outline != null) {
+            double o = theme.scale(1);
+            if (rounded && rad > 0) rounded(renderer, x - o, y - o, width + o * 2, height + o * 2, rad + o, outline);
+            else renderer.quad(x - o, y - o, width + o * 2, height + o * 2, outline);
+        }
 
         if (rounded && rad > 0) rounded(renderer, x, y, width, height, rad, bg);
         else renderer.quad(x, y, width, height, bg);

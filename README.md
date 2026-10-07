@@ -115,6 +115,8 @@ Aliases: `.bs`, `.bsearch`, `.navigator`, `.find`.
 | `corner-radius` | 6 | Corner radius (0-12) |
 | `card-padding` | 2 | Inner card padding = module size (0-8) |
 | `inline-settings` | true | Settings open locked inside Search (off = draggable window) |
+| `inline-outline` | true | Outline the right-clicked module while its settings are open |
+| `draggable-panel` | false | Show a drag handle to move the Search panel (off = fixed) |
 
 Delete `meteor-client/better-search-usage.json` to reset learning.
 
