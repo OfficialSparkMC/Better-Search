@@ -27,8 +27,10 @@ public class ModuleCard extends WPressable {
     public double radius = 6;
     public int padExtra = 2;
     public boolean showDot = true;
-    /** Right-side meta text (category/state). Null = hidden (compact grid). */
-    public String meta;
+    /** Show right-side meta text (compact grid hides it, tooltip carries details). */
+    public boolean showMeta = true;
+    /** Include category in meta (grouped view already has headers). */
+    public boolean showCategory = true;
 
     /** Outline border (e.g. module whose settings are open). Null = none. */
     public Color outline = null;
@@ -53,17 +55,29 @@ public class ModuleCard extends WPressable {
 
         dotSize = theme.textHeight() * 0.62;
         titleW = theme.textWidth(result.module().title);
-        metaW = meta != null ? theme.textWidth(meta) : 0;
+        String live = liveMeta();
+        metaW = live != null ? theme.textWidth(live) : 0;
 
         double w = pad * 2 + titleW;
         if (showDot) w += dotSize + gap;
-        if (meta != null) w += gap + metaW;
+        if (live != null) w += gap + metaW;
 
         width = w;
         height = pad * 2 + theme.textHeight();
 
         double minWidth = theme.scale(this.minWidth);
         if (width < minWidth) width = minWidth;
+    }
+
+    /** Meta text computed live so toggles update in place without list rebuilds. */
+    public String liveMeta() {
+        if (!showMeta) return null;
+        int uses = com.bettersearch.search.UsageTracker.getCount(result.module());
+        String state = result.module().isActive() ? "ON" : "OFF";
+        if (showCategory) {
+            return result.module().category.name + " • " + state + (uses > 0 ? " • " + uses : "");
+        }
+        return state + (uses > 0 ? " • " + uses : "");
     }
 
     @Override
@@ -98,9 +112,10 @@ public class ModuleCard extends WPressable {
 
         renderer.text(result.module().title, cx, y + pad, theme.textColor(), false);
 
-        if (meta != null) {
+        String live = liveMeta();
+        if (live != null) {
             Color metaColor = selected ? theme.textColor() : theme.textSecondaryColor();
-            renderer.text(meta, x + width - pad - metaW, y + pad, metaColor, false);
+            renderer.text(live, x + width - pad - metaW, y + pad, metaColor, false);
         }
     }
 

@@ -52,6 +52,12 @@ public class BetterSearchTabScreen extends TabScreen {
     private List<ModuleSearch.Result> current = List.of();
     private int selected = 0;
 
+    /** Live card widgets by module for in-place updates (no rebuild on toggle). */
+    private final java.util.Map<Module, ModuleCard> cardMap = new java.util.HashMap<>();
+
+    /** Last query that was fully sorted; same-query rebuilds keep order stable. */
+    private String lastQuery = null;
+
     /** Non-null while inline (locked) settings are open. */
     private Module inlineModule = null;
 
@@ -201,16 +207,36 @@ public class BetterSearchTabScreen extends TabScreen {
         boolean learn = cfg == null || cfg.learnUsage.get();
 
         String query = searchBox.get().trim();
+        // Remember the selected module so rebuilds keep selection on it (not the index)
+        Module keepSel = (selected >= 0 && selected < current.size()) ? current.get(selected).module() : null;
+        boolean sameQuery = query.equals(lastQuery);
+        java.util.Map<Module, Integer> prevOrder = null;
+        if (sameQuery) {
+            prevOrder = new java.util.HashMap<>();
+            for (int i = 0; i < current.size(); i++) prevOrder.put(current.get(i).module(), i);
+        }
+        lastQuery = query;
+
         list.clear();
+        cardMap.clear();
 
         if (query.isEmpty()) {
-            refreshGrouped(learn);
+            refreshGrouped(learn, sameQuery ? prevOrder : null);
         } else {
-            refreshFiltered(query, max, desc, sett, tags, learn);
+            refreshFiltered(query, max, desc, sett, tags, learn, sameQuery ? prevOrder : null);
         }
 
         if (selected >= current.size()) selected = Math.max(0, current.size() - 1);
         if (current.isEmpty()) selected = 0;
+        // Restore selection onto the same module when it is still shown
+        if (sameQuery && keepSel != null) {
+            for (int i = 0; i < current.size(); i++) {
+                if (current.get(i).module() == keepSel) {
+                    selected = i;
+                    break;
+                }
+            }
+        }
 
         // Cursor first: keep the text caret in the search box after every rebuild
         // (mouse clicks on cards would otherwise leave focus nowhere)
@@ -234,7 +260,7 @@ public class BetterSearchTabScreen extends TabScreen {
     }
 
     /** Empty query: FULL module list grouped by category (Wurst shows everything with category). */
-    private void refreshGrouped(boolean learn) {
+    private void refreshGrouped(boolean learn, java.util.Map<Module, Integer> prevOrder) {
         BetterSearchModule cfg = config();
         int columns = cfg != null ? Math.max(1, Math.min(3, cfg.columns.get())) : 1;
 
@@ -248,9 +274,16 @@ public class BetterSearchTabScreen extends TabScreen {
             }
             if (group.isEmpty()) continue;
 
-            group.sort(Comparator
-                .comparingInt((Module m) -> learn ? -UsageTracker.getCount(m) : 0)
-                .thenComparing(m -> m.title, String.CASE_INSENSITIVE_ORDER));
+            if (prevOrder != null) {
+                // Same query: keep previous order (toggles must not reshuffle the list)
+                group.sort(Comparator
+                    .comparingInt((Module m) -> prevOrder.getOrDefault(m, Integer.MAX_VALUE))
+                    .thenComparing(m -> m.title, String.CASE_INSENSITIVE_ORDER));
+            } else {
+                group.sort(Comparator
+                    .comparingInt((Module m) -> learn ? -UsageTracker.getCount(m) : 0)
+                    .thenComparing(m -> m.title, String.CASE_INSENSITIVE_ORDER));
+            }
 
             // Modern category header
             WLabel header = list.add(theme.label(category.name, true)).expandX().widget();
@@ -287,12 +320,25 @@ public class BetterSearchTabScreen extends TabScreen {
     }
 
     /** Non-empty query: flat fuzzy-ranked list with category shown per row (Wurst-style). */
-    private void refreshFiltered(String query, int max, boolean desc, boolean sett, boolean tags, boolean learn) {
+    private void refreshFiltered(String query, int max, boolean desc, boolean sett, boolean tags, boolean learn, java.util.Map<Module, Integer> prevOrder) {
         BetterSearchModule cfg = config();
         int columns = cfg != null ? Math.max(1, Math.min(3, cfg.columns.get())) : 1;
 
         List<ModuleSearch.Result> found = ModuleSearch.search(query, desc, sett, tags, max);
-        if (!learn) {
+        if (prevOrder != null) {
+            // Same query: keep previous order (toggles must not reshuffle the list)
+            found = found.stream()
+                .sorted((a, b) -> {
+                    int c = Integer.compare(a.score(), b.score());
+                    if (c != 0) return c;
+                    int po = Integer.compare(
+                        prevOrder.getOrDefault(a.module(), Integer.MAX_VALUE),
+                        prevOrder.getOrDefault(b.module(), Integer.MAX_VALUE));
+                    if (po != 0) return po;
+                    return a.module().title.compareToIgnoreCase(b.module().title);
+                })
+                .toList();
+        } else if (!learn) {
             found = found.stream()
                 .sorted((a, b) -> {
                     int c = Integer.compare(a.score(), b.score());
@@ -323,7 +369,7 @@ public class BetterSearchTabScreen extends TabScreen {
         }
     }
 
-    private ModuleCard makeCard(ModuleSearch.Result r, int flatIndex, String meta) {
+    private ModuleCard makeCard(ModuleSearch.Result r, int flatIndex, boolean showCategory, boolean showMeta) {
         BetterSearchModule cfg = config();
         ModuleCard card = new ModuleCard(r);
         card.selected = flatIndex == selected;
@@ -331,42 +377,39 @@ public class BetterSearchTabScreen extends TabScreen {
         card.radius = cfg != null ? cfg.cornerRadius.get() : 6;
         card.padExtra = cfg != null ? cfg.cardPadding.get() : 2;
         card.showDot = cfg == null || cfg.showDot.get();
-        card.meta = meta;
+        card.showMeta = showMeta;
+        card.showCategory = showCategory && (cfg == null || cfg.showCategory.get());
         // Outline the right-clicked module (toggleable via inline-outline)
         if ((cfg == null || cfg.inlineOutline.get()) && r.module() == outlinedModule) {
             card.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
         }
+        card.tooltip = cardTooltip(r);
+        card.onToggle = () -> {
+            // In-place update: no list rebuild, so nothing moves, scroll and
+            // selection stay exactly where they are.
+            r.module().toggle();
+            UsageTracker.record(r.module());
+            UsageTracker.save();
+            card.tooltip = cardTooltip(r);
+            card.invalidate();
+        };
+        card.onSettings = () -> openModuleSettings(r.module());
+        cardMap.put(r.module(), card);
+        return card;
+    }
+
+    private String cardTooltip(ModuleSearch.Result r) {
         int uses = UsageTracker.getCount(r.module());
-        boolean active = r.module().isActive();
-        String state = active ? "ON" : "OFF";
-        card.tooltip = r.matchedText()
+        String state = r.module().isActive() ? "ON" : "OFF";
+        return r.matchedText()
             + "  [" + r.module().category.name + "]  (" + state + ")"
             + "\n" + r.module().description
             + (uses > 0 ? "\nUsed " + uses + "x" : "")
             + "\nLeft-click toggle • Right-click settings";
-        card.onToggle = () -> {
-            r.module().toggle();
-            UsageTracker.record(r.module());
-            UsageTracker.save();
-            refreshResults();
-        };
-        card.onSettings = () -> openModuleSettings(r.module());
-        return card;
-    }
-
-    private String rowMeta(ModuleSearch.Result r, boolean showCategory) {
-        BetterSearchModule cfg = config();
-        boolean showCatSetting = cfg == null || cfg.showCategory.get();
-        int uses = UsageTracker.getCount(r.module());
-        String state = r.module().isActive() ? "ON" : "OFF";
-        boolean showCatHere = showCategory && showCatSetting;
-        return showCatHere
-            ? r.module().category.name + " • " + state + (uses > 0 ? " • " + uses : "")
-            : state + (uses > 0 ? " • " + uses : "");
     }
 
     private void addRow(ModuleSearch.Result r, int index, boolean showCategory) {
-        list.add(makeCard(r, index, rowMeta(r, showCategory))).expandX().widget();
+        list.add(makeCard(r, index, showCategory, true)).expandX().widget();
     }
 
     /** Multiple modules per line: grid rows with N compact cards each. */
@@ -382,7 +425,7 @@ public class BetterSearchTabScreen extends TabScreen {
             for (int j = 0; j < columns && i + j < results.size(); j++) {
                 ModuleSearch.Result r = results.get(i + j);
                 // Compact grid cards: no meta text (tooltip carries details)
-                row.add(makeCard(r, baseIndex + i + j, null)).expandX().widget();
+                row.add(makeCard(r, baseIndex + i + j, false, false)).expandX().widget();
             }
 
             list.add(row).expandX().widget();
@@ -532,7 +575,7 @@ public class BetterSearchTabScreen extends TabScreen {
         // ALWAYS outlined + tinted (no toggle) so the open menu visibly marks its module.
         {
             ModuleSearch.Result r = new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m));
-            ModuleCard context = makeCard(r, -1, rowMeta(r, true));
+            ModuleCard context = makeCard(r, -1, true, true);
             context.selected = false;
             context.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
             context.onToggle = () -> {
@@ -600,7 +643,14 @@ public class BetterSearchTabScreen extends TabScreen {
         r.module().toggle();
         UsageTracker.record(r.module());
         UsageTracker.save();
-        refreshResults();
+        // In-place like mouse toggles: no rebuild, selection and scroll stay put
+        ModuleCard card = cardMap.get(r.module());
+        if (card != null) {
+            card.tooltip = cardTooltip(r);
+            card.invalidate();
+        } else {
+            refreshResults();
+        }
     }
 
     private void openSelectedSettings() {
