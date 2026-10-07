@@ -8,10 +8,12 @@ import meteordevelopment.meteorclient.gui.GuiThemes;
 import meteordevelopment.meteorclient.gui.tabs.Tab;
 import meteordevelopment.meteorclient.gui.tabs.Tabs;
 import meteordevelopment.meteorclient.settings.BoolSetting;
+import meteordevelopment.meteorclient.settings.ColorSetting;
 import meteordevelopment.meteorclient.settings.IntSetting;
 import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 
 import static org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_CONTROL;
 
@@ -167,6 +169,45 @@ public class BetterSearchModule extends Module {
         .name("draggable-panel")
         .description("Show a drag handle to move the Search panel. Off = fixed centered (clean).")
         .defaultValue(false)
+        .build()
+    );
+
+    public final Setting<Boolean> menuBackground = sgAppearance.add(new BoolSetting.Builder()
+        .name("menu-background")
+        .description("Draw a background panel behind the open module menu.")
+        .defaultValue(true)
+        .build()
+    );
+
+    public final Setting<SettingColor> menuBgColor = sgAppearance.add(new ColorSetting.Builder()
+        .name("menu-bg-color")
+        .description("Background color of the open module menu.")
+        .defaultValue(new SettingColor(12, 12, 18, 210))
+        .build()
+    );
+
+    public final Setting<Boolean> menuOutline = sgAppearance.add(new BoolSetting.Builder()
+        .name("menu-outline")
+        .description("Outline around the open module menu.")
+        .defaultValue(true)
+        .build()
+    );
+
+    public final Setting<Integer> menuCornerRadius = sgAppearance.add(new IntSetting.Builder()
+        .name("menu-corner-radius")
+        .description("Corner radius of the open module menu.")
+        .defaultValue(8)
+        .min(0)
+        .sliderMax(16)
+        .build()
+    );
+
+    public final Setting<Integer> menuPadding = sgAppearance.add(new IntSetting.Builder()
+        .name("menu-padding")
+        .description("Inner padding of the open module menu.")
+        .defaultValue(6)
+        .min(0)
+        .sliderMax(16)
         .build()
     );
 

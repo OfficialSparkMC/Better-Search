@@ -470,6 +470,18 @@ public class BetterSearchTabScreen extends TabScreen {
             statusLabel.set("Settings: " + m.title + " — Left/Backspace for list, or type to search");
         }
 
+        BetterSearchModule cfg = config();
+        MenuPanel menu = new MenuPanel();
+        menu.spacing = 4;
+        menu.drawBg = cfg == null || cfg.menuBackground.get();
+        try {
+            menu.bg = new meteordevelopment.meteorclient.utils.render.color.Color(cfg != null ? cfg.menuBgColor.get() : new meteordevelopment.meteorclient.utils.render.color.SettingColor(12, 12, 18, 210));
+        } catch (Exception ignored) {}
+        menu.outline = cfg == null || cfg.menuOutline.get();
+        menu.radius = cfg != null ? cfg.menuCornerRadius.get() : 8;
+        menu.pad = cfg != null ? cfg.menuPadding.get() : 6;
+        list.add(menu).expandX().widget();
+
         WHorizontalList top = theme.horizontalList();
         top.spacing = 4;
         WButton back = theme.button("Back");
@@ -485,9 +497,9 @@ public class BetterSearchTabScreen extends TabScreen {
             }
         };
         top.add(activeBox).right().widget();
-        list.add(top).expandX().widget();
+        menu.add(top).expandX().widget();
 
-        WLabel desc = list.add(theme.label(m.description)).expandX().widget();
+        WLabel desc = menu.add(theme.label(m.description)).expandX().widget();
         try {
             desc.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
@@ -506,16 +518,16 @@ public class BetterSearchTabScreen extends TabScreen {
                 showInline();
             };
             context.onSettings = () -> {};
-            list.add(context).expandX().widget();
+            menu.add(context).expandX().widget();
             BetterSearchAddon.LOG.info("[BetterSearch] inline SHOW menu for {} (outlined context card added)", m.name);
         }
 
-        list.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
+        menu.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
         // Dedicated holder: Settings.tick() clears + rebuilds its container on the first
         // tick (visibility pass), so it must never be our shared list.
         inlineSettingsHolder = theme.verticalList();
         inlineSettingsHolder.add(theme.settings(m.settings)).expandX().widget();
-        list.add(inlineSettingsHolder).expandX().widget();
+        menu.add(inlineSettingsHolder).expandX().widget();
     }
 
     @Override

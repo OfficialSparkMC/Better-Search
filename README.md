@@ -36,6 +36,7 @@ Under ClickGUI → Better Search → `better-search`. The useful ones:
 - `columns` — modules per line, 1–3
 - `panel-width`, `row-gap`, `row-inner-gap`, `card-padding`, `corner-radius`, `rounded-cards` — look and density
 - `show-dot`, `show-category`, `show-status`, `inline-outline` — which bits to display
+- `menu-background`, `menu-bg-color`, `menu-outline`, `menu-corner-radius`, `menu-padding` — background + outline of the open module menu
 - `learn-usage` — turn off if you don't want usage-based ranking
 - `inline-settings` — off = module settings open in a normal draggable Meteor window
 - `draggable-panel` — shows a drag handle to move the panel around
