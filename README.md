@@ -1,200 +1,61 @@
-# Better Search — by Turbo
+# Better Search
 
-A Meteor Client addon for **Minecraft 1.21.11** that adds a **separate `Search` tab**
-in the Meteor ClickGUI menu — a modern, clean, Wurst-style module finder.
+A Meteor Client addon (Minecraft 1.21.11) that adds a proper `Search` tab to the ClickGUI.
+Think Wurst's Navigator: one searchable list with every module, fuzzy matching,
+and your most-used stuff ranked first.
 
-Open Meteor (`Right Shift`), click the **`Search`** tab in the top bar (next to
-Modules / Config / HUD) — or just press **`Right-Ctrl`**. Fixed (non-draggable)
-panel: search bar fixed on top, scrollable result list below. Empty search shows the
-**FULL module list grouped by category** (every Meteor category with its modules,
-most-used first); typing filters to a flat ranked list with the category shown per
-row, like Wurst Navigator.
+Made by Turbo.
 
-Credits: **Turbo**.
+## What it does
 
-## Features
-
-- **Separate tab**: `Search` tab in the Meteor menu top bar (`Tabs.add`), not a popup.
-  Fixed modern panel (`TabScreen`, centered, **not draggable** — no movable window style).
-- **Fancy clean UI via shared renderer**: custom rounded module cards drawn with
-  Meteor's shared `GuiRenderer` (matches your theme), one search box, status line,
-  fancy rows with `●/○` active dot (green/gray, yellow when keyboard-selected) +
-  module title + `category • ON/OFF • uses`. Details live in tooltips.
-- **Rounded corners + module size**: `rounded-cards` toggle, `corner-radius` (0-12),
-  `card-padding` (inner card size), plus `panel-width`, `row-gap`, `row-inner-gap`,
-  `columns` grid.
-- **Locked settings in Better Search**: right-click / `Right` opens module settings
-  **inline in the tab (non-draggable)** by default; `inline-settings` off restores the
-  classic draggable Meteor window. `Left`/`Backspace` goes back.
-- **Full modules with category (Wurst-style)**: empty query shows **every module grouped
-  under its category header** (Combat, Movement, Render, ...), most-used first.
-  Typing filters to a flat list with `category` shown on every row.
-- **Scrollable**: results in a scrollable view with scrollbar.
-  Mouse wheel + drag work; search box stays fixed on top.
-- **Multiple modules per line**: `columns` setting (1-3, default 1) packs modules
-  into a grid; selected cell dot turns yellow.
-- **Cursor first**: the text caret sits in the search box on open (cursor at end)
-  and stays there after every refresh, so typing always filters instantly.
-- **Perf tweaks**: per-module searchable data cached (lowercased once, setting titles
-  cached); excellent name/title hits skip description/settings passes; Levenshtein
-  skipped when length difference alone exceeds the threshold (incl. per-word).
-- **Fuzzy matching**: exact → prefix → word-prefix (`aura kill` → `Kill Aura`) →
-  all-words → substring → subsequence (`kla`) → typo-tolerant Levenshtein.
-- **Searches everything**: name, title, description, category (`combat`),
-  aliases, setting names (`range` → KillAura), `@SearchTags` synonyms.
-- **Synonyms** (Wurst `@SearchTags` equivalent):
-  ```java
-  @SearchTags({"speedy-gonzales", "haste"})
-  public class FastBreak extends Module { ... }
-  ```
-- **Learns preferences**: every toggle counted via `ModuleToggleMixin`,
-  saved to `meteor-client/better-search-usage.json`, most-used ranks first.
-- **Keyboard**: `Up/Down` move, `Enter` toggle, `Right` open settings, `Esc` close.
-- **Mouse**: left-click toggles, right-click opens settings.
-- **Shortcuts**: `Right-Ctrl` opens the Search tab (momentary module bind, rebindable) + `.better-search` / `.bs` chat command.
-
-## Requirements
-
-- Minecraft **1.21.11**
-- Fabric Loader **0.18.2**
-- Meteor Client **1.21.11-SNAPSHOT**
-- Java **21**
+- Adds a **Search tab** next to Modules / Config / HUD in the Meteor menu.
+- Empty search shows **all modules grouped by category**. Typing filters the list
+  with fuzzy matching (typos and word order don't matter much).
+- Matches names, descriptions, categories, aliases, setting names, and custom
+  `@SearchTags` synonyms.
+- **Learns what you use** — toggling a module bumps it up in future results.
+  Stored in `meteor-client/better-search-usage.json`, delete it to reset.
+- Left-click toggles a module, right-click opens its settings right inside the tab
+  (or the normal Meteor window if you turn that off).
+- Keyboard: `Up/Down` to move, `Enter` to toggle, `Right` for settings, `Esc` to close.
+- Command: `.better-search`, or `.bs` for short. `.bs <text>` lists matches,
+  `.bs toggle <text>` toggles the best one.
 
 ## Install
 
-1. Install Fabric Loader 0.18.2 for Minecraft 1.21.11.
-2. Put Meteor Client (1.21.11) + this mod's JAR into `mods/`.
-3. Launch, press `Right-Ctrl` — the `Search` tab appears (or `Right Shift` → click `Search`).
+1. Minecraft 1.21.11 with Fabric Loader 0.18.2.
+2. Meteor Client for 1.21.11 in `mods/`.
+3. Drop the `better-search-*.jar` from this repo's `build/libs/` into `mods/` too.
+4. Open Meteor with `Right Shift`, click the **Search** tab. Or just press `Right-Ctrl`.
 
-## Usage
+## Settings
 
-1. Press `Right-Ctrl` (default bind, rebindable in ClickGUI → Better Search) or Meteor menu → `Search` tab, or `.better-search`.
-2. Type, e.g. `kill`, `fly`, `esp`, `range`, `combat`.
-3. `Enter` toggles, `Right` opens settings. Mouse: left toggle, right settings.
+Under ClickGUI → Better Search → `better-search`. The useful ones:
 
-### Controls
+- `max-results` — how many rows when filtering (default 100, empty search always shows everything)
+- `columns` — modules per line, 1–3
+- `panel-width`, `row-gap`, `row-inner-gap`, `card-padding`, `corner-radius`, `rounded-cards` — look and density
+- `show-dot`, `show-category`, `show-status`, `inline-outline` — which bits to display
+- `learn-usage` — turn off if you don't want usage-based ranking
+- `inline-settings` — off = module settings open in a normal draggable Meteor window
+- `draggable-panel` — shows a drag handle to move the panel around
 
-| Input | Action |
-|-------|--------|
-| Type | Live filter, selection resets to best match |
-| `Up` / `Down` | Move selection |
-| `Enter` | Toggle selected |
-| `Right` | Open selected settings |
-| Left-click | Toggle |
-| Right-click | Open settings |
-| `Esc` | Close |
-| Wheel / drag | Scroll list |
+For addon devs: annotate your modules with `@SearchTags({"alias", "synonym"})`
+from this mod and they'll show up under those words too.
 
-### Commands
+## Build it yourself
 
-| Command | Action |
-|---------|--------|
-| `.better-search` | Open the Search tab |
-| `.better-search <query>` | List matches in chat |
-| `.better-search toggle <query>` | Toggle best match |
-
-Aliases: `.bs`, `.bsearch`, `.navigator`, `.find`.
-
-### Settings (`Better Search` module)
-
-| Setting | Default | Meaning |
-|---------|---------|---------|
-| `max-results` | 100 | Rows when filtering (empty shows FULL list) |
-| `learn-usage` | true | Boost frequent modules |
-| `search-descriptions` | true | Match descriptions |
-| `search-settings` | true | Match setting names |
-| `search-tags` | true | Match aliases + `@SearchTags` |
-| `panel-width` | 500 | Search panel width (300-800) |
-| `columns` | 1 | Modules per line grid (1-3) |
-| `row-gap` | 2 | Vertical gap between rows = row size/density (0-12) |
-| `row-inner-gap` | 4 | Horizontal gap inside a row (0-12) |
-| `show-dot` | true | Show `●/○` active dot |
-| `show-category` | true | Show category per row |
-| `show-status` | true | Show status line |
-| `rounded-cards` | true | Rounded corners on module cards |
-| `corner-radius` | 6 | Corner radius (0-12) |
-| `card-padding` | 2 | Inner card padding = module size (0-8) |
-| `inline-settings` | true | Settings open locked inside Search (off = draggable window) |
-| `inline-outline` | true | Outline the right-clicked module while its settings are open |
-| `draggable-panel` | false | Show a drag handle to move the Search panel (off = fixed) |
-
-Delete `meteor-client/better-search-usage.json` to reset learning.
-
-## For addon developers
-
-```java
-import com.bettersearch.SearchTags;
-
-@SearchTags({"speedy-gonzales", "fast break", "haste"})
-public class MyModule extends Module { ... }
-```
-
-Custom tab integration used here:
-
-```java
-Tabs.add(new BetterSearchTab()); // Tab{name="Search", screen=WindowTabScreen}
-```
-
-## Project structure
-
-```text
-src/main/java/com/bettersearch/
-  BetterSearchAddon.java      — entrypoint, Tabs.add(new BetterSearchTab()), by Turbo
-  SearchTags.java             — synonyms annotation
-  search/
-    FuzzyMatcher.java         — scoring
-    UsageTracker.java         — counts + JSON, no extra deps
-    ModuleSearch.java         — ranking across fields
-  tabs/
-    BetterSearchTab.java      — Tab("Search") in top bar
-    BetterSearchTabScreen.java— TabScreen fixed modern panel (no drag) + scroll view + grouped full list
-  modules/
-    BetterSearchModule.java   — Right-Ctrl keybind, opens Search tab, search tuning settings
-  commands/
-    BetterSearchCommand.java  — .better-search (open/list/toggle)
-  mixin/
-    ModuleToggleMixin.java    — toggle counter
-src/main/resources/
-  fabric.mod.json, better-search.mixins.json, assets/better-search/icon.png
-```
-
-## How to build (1.21.11)
-
-Pinned in `gradle/libs.versions.toml`:
-
-```toml
-minecraft = "1.21.11"
-yarn-mappings = "1.21.11+build.3"
-fabric-loader = "0.18.2"
-loom = "1.14-SNAPSHOT"
-meteor = "1.21.11-SNAPSHOT"
-```
+Needs Java 21.
 
 ```bash
-java -version        # must be 21
-./gradlew build      # Linux/macOS
-gradlew.bat build    # Windows
+./gradlew build
 ```
 
-Output: `build/libs/better-search-0.1.0.jar` (`BUILD SUCCESSFUL`).
-Dev client: run `Minecraft Client` config in IDEA, or `./gradlew runClient`.
-Install: copy JAR to `mods/` next to Meteor 1.21.11.
+Jar lands in `build/libs/`. For a live dev client: `./gradlew runClient`.
 
-Troubleshooting: use Java 21; keep the 1.21.11 combo (this branch is not for 26.x);
-if Meteor snapshots 401/404, retry (repos already in `build.gradle.kts`).
-
-## Git
-
-```bash
-git status
-git log --oneline
-```
-
-## Credits
-
-- **Turbo** — idea, design, implementation
-- Meteor Client + Fabric; inspired by Wurst Navigator
+Pinned versions: MC 1.21.11, Yarn `1.21.11+build.3`, Loader 0.18.2, Loom 1.14,
+Meteor `1.21.11-SNAPSHOT` (see `gradle/libs.versions.toml`).
 
 ## License
 
-CC0. Keep the credit to **Turbo**.
+CC0, do what you want.
