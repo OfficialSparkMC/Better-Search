@@ -18,6 +18,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT;
 public class ModuleCard extends WPressable {
     private static final Color BG = new Color(22, 22, 28, 150);
     private static final Color BG_HOVER = new Color(48, 48, 60, 185);
+    private static final Color BG_OUTLINED = new Color(66, 54, 20, 205);
 
     private final ModuleSearch.Result result;
     public boolean selected;
@@ -66,11 +67,13 @@ public class ModuleCard extends WPressable {
 
     @Override
     protected void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta) {
-        Color bg = (selected || mouseOver) ? BG_HOVER : BG;
+        Color bg = outline != null ? BG_OUTLINED : ((selected || mouseOver) ? BG_HOVER : BG);
         double rad = theme.scale(radius);
 
         if (outline != null) {
-            double o = theme.scale(1);
+            // Thick border (min 2 units) so it is visible on every GUI scale
+            double o = theme.scale(1.5);
+            if (o < 2) o = 2;
             if (rounded && rad > 0) rounded(renderer, x - o, y - o, width + o * 2, height + o * 2, rad + o, outline);
             else renderer.quad(x - o, y - o, width + o * 2, height + o * 2, outline);
         }
