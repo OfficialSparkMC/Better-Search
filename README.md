@@ -89,6 +89,12 @@ Aliases: `.bs`, `.bsearch`, `.navigator`, `.find`.
 | `search-descriptions` | true | Match descriptions |
 | `search-settings` | true | Match setting names |
 | `search-tags` | true | Match aliases + `@SearchTags` |
+| `panel-width` | 500 | Search panel width (300-800) |
+| `row-gap` | 2 | Vertical gap between rows = row size/density (0-12) |
+| `row-inner-gap` | 4 | Horizontal gap inside a row (0-12) |
+| `show-dot` | true | Show `●/○` active dot |
+| `show-category` | true | Show category per row |
+| `show-status` | true | Show status line |
 
 Delete `meteor-client/better-search-usage.json` to reset learning.
 

@@ -40,6 +40,7 @@ public class BetterSearchTabScreen extends TabScreen {
     private WTextBox searchBox;
     private WLabel statusLabel;
     private WVerticalList list;
+    private WVerticalList panel;
     private WView scroll;
 
     /** Flat list in display order for keyboard nav (grouped mode is flattened). */
@@ -52,8 +53,8 @@ public class BetterSearchTabScreen extends TabScreen {
 
     @Override
     public void initWidgets() {
-        // Fixed modern panel: centered, max ~500px, NOT draggable (no WWindow).
-        WVerticalList panel = theme.verticalList();
+        // Fixed modern panel: centered, customizable width, NOT draggable (no WWindow).
+        panel = theme.verticalList();
         panel.spacing = 6;
         add(panel).centerX().marginTop(46).widget();
         panel.minWidth = 500;
@@ -88,6 +89,10 @@ public class BetterSearchTabScreen extends TabScreen {
         return Modules.get().get(BetterSearchModule.class);
     }
 
+    private int appearancePanelWidth(BetterSearchModule cfg) {
+        return cfg != null ? cfg.panelWidth.get() : 500;
+    }
+
     private void refreshResults() {
         if (list == null || searchBox == null) return;
 
@@ -97,6 +102,15 @@ public class BetterSearchTabScreen extends TabScreen {
         boolean sett = cfg == null || cfg.searchSettings.get();
         boolean tags = cfg == null || cfg.searchTags.get();
         boolean learn = cfg == null || cfg.learnUsage.get();
+
+        // Customizable module/row sizes
+        int panelWidth = appearancePanelWidth(cfg);
+        int rowGap = cfg != null ? cfg.rowGap.get() : 2;
+        boolean showStatus = cfg == null || cfg.showStatus.get();
+        if (panel != null) panel.minWidth = panelWidth;
+        searchBox.minWidth = Math.max(200, panelWidth - 20);
+        list.spacing = rowGap;
+        if (statusLabel != null) statusLabel.visible = showStatus;
 
         String query = searchBox.get().trim();
         list.clear();
@@ -182,18 +196,25 @@ public class BetterSearchTabScreen extends TabScreen {
     }
 
     private void addRow(ModuleSearch.Result r, int index, boolean showCategory) {
+        BetterSearchModule cfg = config();
+        boolean showDot = cfg == null || cfg.showDot.get();
+        boolean showCatSetting = cfg == null || cfg.showCategory.get();
+        int innerGap = cfg != null ? cfg.rowInnerGap.get() : 4;
+
         boolean isSelected = index == selected;
         boolean active = r.module().isActive();
         int uses = UsageTracker.getCount(r.module());
 
         WHorizontalList row = theme.horizontalList();
-        row.spacing = 4;
+        row.spacing = innerGap;
 
-        // Fancy status dot via shared renderer
-        var dot = row.add(theme.label(active ? "●" : "○")).widget();
-        try {
-            dot.color(active ? Color.GREEN : Color.GRAY);
-        } catch (Exception ignored) {}
+        // Customizable dot (row size/density via gaps, dot toggle)
+        if (showDot) {
+            var dot = row.add(theme.label(active ? "●" : "○")).widget();
+            try {
+                dot.color(active ? Color.GREEN : Color.GRAY);
+            } catch (Exception ignored) {}
+        }
 
         WWidget modWidget = theme.module(r.module());
         String state = active ? "ON" : "OFF";
@@ -204,7 +225,8 @@ public class BetterSearchTabScreen extends TabScreen {
             + "\nLeft-click toggle • Right-click settings";
         row.add(modWidget).expandX();
 
-        String meta = showCategory
+        boolean showCatHere = showCategory && showCatSetting;
+        String meta = showCatHere
             ? r.module().category.name + " • " + state + (uses > 0 ? " • " + uses : "")
             : state + (uses > 0 ? " • " + uses : "");
         var metaLabel = row.add(theme.label(meta)).right().widget();

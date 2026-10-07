@@ -28,6 +28,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_CONTROL;
 public class BetterSearchModule extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgSearch = settings.createGroup("Search");
+    private final SettingGroup sgAppearance = settings.createGroup("Appearance");
 
     public final Setting<Integer> maxResults = sgGeneral.add(new IntSetting.Builder()
         .name("max-results")
@@ -62,6 +63,54 @@ public class BetterSearchModule extends Module {
     public final Setting<Boolean> searchTags = sgSearch.add(new BoolSetting.Builder()
         .name("search-tags")
         .description("Also match aliases and @SearchTags synonyms (Wurst-style).")
+        .defaultValue(true)
+        .build()
+    );
+
+    public final Setting<Integer> panelWidth = sgAppearance.add(new IntSetting.Builder()
+        .name("panel-width")
+        .description("Width of the Search tab panel.")
+        .defaultValue(500)
+        .min(300)
+        .sliderMax(800)
+        .build()
+    );
+
+    public final Setting<Integer> rowGap = sgAppearance.add(new IntSetting.Builder()
+        .name("row-gap")
+        .description("Vertical gap between rows (row size / density).")
+        .defaultValue(2)
+        .min(0)
+        .sliderMax(12)
+        .build()
+    );
+
+    public final Setting<Integer> rowInnerGap = sgAppearance.add(new IntSetting.Builder()
+        .name("row-inner-gap")
+        .description("Horizontal gap inside a row (dot / module / category).")
+        .defaultValue(4)
+        .min(0)
+        .sliderMax(12)
+        .build()
+    );
+
+    public final Setting<Boolean> showDot = sgAppearance.add(new BoolSetting.Builder()
+        .name("show-dot")
+        .description("Show the green/gray active dot in each row.")
+        .defaultValue(true)
+        .build()
+    );
+
+    public final Setting<Boolean> showCategory = sgAppearance.add(new BoolSetting.Builder()
+        .name("show-category")
+        .description("Show the category on each row (Wurst-style).")
+        .defaultValue(true)
+        .build()
+    );
+
+    public final Setting<Boolean> showStatus = sgAppearance.add(new BoolSetting.Builder()
+        .name("show-status")
+        .description("Show the status line under the search bar.")
         .defaultValue(true)
         .build()
     );
