@@ -31,10 +31,10 @@ public class BetterSearchModule extends Module {
 
     public final Setting<Integer> maxResults = sgGeneral.add(new IntSetting.Builder()
         .name("max-results")
-        .description("Max results shown in the Better Search list. Empty query shows most-used first (Wurst-style).")
-        .defaultValue(30)
-        .min(5)
-        .sliderMax(100)
+        .description("Max results when filtering. Empty query always shows the FULL list grouped by category.")
+        .defaultValue(100)
+        .min(10)
+        .sliderMax(200)
         .build()
     );
 

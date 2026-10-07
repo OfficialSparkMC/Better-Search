@@ -5,34 +5,44 @@ import com.bettersearch.search.ModuleSearch;
 import com.bettersearch.search.UsageTracker;
 import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.tabs.Tab;
-import meteordevelopment.meteorclient.gui.tabs.WindowTabScreen;
+import meteordevelopment.meteorclient.gui.tabs.TabScreen;
+import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
+import meteordevelopment.meteorclient.gui.widgets.containers.WView;
 import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
+import meteordevelopment.meteorclient.systems.config.Config;
+import meteordevelopment.meteorclient.systems.modules.Category;
+import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
-import meteordevelopment.meteorclient.utils.misc.NbtUtils;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.input.KeyInput;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 
 /**
- * Fancy, clean, scrollable Navigator tab (Wurst-style) using Meteor's shared
- * GUI renderer (all widgets go through the theme / GuiRenderer, so it matches
- * the active Meteor theme). Search bar on top, scrollable result list below.
+ * Modern, clean, fixed (non-draggable) Navigator tab, Wurst-style.
+ * Uses Meteor's shared GUI renderer (theme widgets only, no custom GL).
+ * Search bar fixed on top, scrollable result list below.
+ * Empty query shows FULL module list grouped by category (like Wurst shows
+ * every feature with its category); typing filters to a flat ranked list.
  * Left-click toggles, right-click opens settings.
  * Keyboard: Up/Down + Enter + Right. Opens with Right-Ctrl.
  *
  * <p>Credits: Turbo</p>
  */
-public class BetterSearchTabScreen extends WindowTabScreen {
+public class BetterSearchTabScreen extends TabScreen {
     private WTextBox searchBox;
+    private WLabel statusLabel;
     private WVerticalList list;
-    private meteordevelopment.meteorclient.gui.widgets.WLabel statusLabel;
+    private WView scroll;
 
+    /** Flat list in display order for keyboard nav (grouped mode is flattened). */
     private List<ModuleSearch.Result> current = List.of();
     private int selected = 0;
 
@@ -42,26 +52,34 @@ public class BetterSearchTabScreen extends WindowTabScreen {
 
     @Override
     public void initWidgets() {
-        // Scrollable window with visible scrollbar (fancy + scrollable)
-        window.view.hasScrollBar = true;
-        window.view.scrollOnlyWhenMouseOver = false;
+        // Fixed modern panel: centered, max ~500px, NOT draggable (no WWindow).
+        WVerticalList panel = theme.verticalList();
+        panel.spacing = 6;
+        add(panel).centerX().marginTop(46).widget();
+        panel.minWidth = 500;
 
-        // Search bar — always visible at top of the scrollable window
-        searchBox = add(theme.textBox("", "Search modules... (Right-Ctrl to open)")).expandX().widget();
+        searchBox = panel.add(theme.textBox("", "Search modules... (Right-Ctrl to open)")).expandX().widget();
         searchBox.setFocused(true);
-        searchBox.minWidth = 260;
+        searchBox.minWidth = 480;
         searchBox.action = () -> {
             selected = 0;
             refreshResults();
         };
 
-        statusLabel = add(theme.label("")).expandX().widget();
+        statusLabel = panel.add(theme.label("")).expandX().widget();
         try {
             statusLabel.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
 
+        // Scrollable results (shared renderer, scrollbar visible). Search box stays above it.
+        scroll = theme.view();
+        scroll.scrollOnlyWhenMouseOver = false;
+        scroll.hasScrollBar = true;
+        panel.add(scroll).expandX().widget();
+
         list = theme.verticalList();
-        add(list).expandX().widget();
+        list.spacing = 2;
+        scroll.add(list).expandX().widget();
 
         refreshResults();
     }
@@ -74,13 +92,67 @@ public class BetterSearchTabScreen extends WindowTabScreen {
         if (list == null || searchBox == null) return;
 
         BetterSearchModule cfg = config();
-        int max = cfg != null ? cfg.maxResults.get() : 30;
+        int max = cfg != null ? cfg.maxResults.get() : 100;
         boolean desc = cfg == null || cfg.searchDescriptions.get();
         boolean sett = cfg == null || cfg.searchSettings.get();
         boolean tags = cfg == null || cfg.searchTags.get();
         boolean learn = cfg == null || cfg.learnUsage.get();
 
-        String query = searchBox.get();
+        String query = searchBox.get().trim();
+        list.clear();
+
+        if (query.isEmpty()) {
+            refreshGrouped(learn);
+        } else {
+            refreshFiltered(query, max, desc, sett, tags, learn);
+        }
+
+        if (selected >= current.size()) selected = Math.max(0, current.size() - 1);
+        if (current.isEmpty()) selected = 0;
+    }
+
+    /** Empty query: FULL module list grouped by category (Wurst shows everything with category). */
+    private void refreshGrouped(boolean learn) {
+        List<ModuleSearch.Result> flat = new ArrayList<>();
+
+        for (Category category : Modules.loopCategories()) {
+            List<Module> group = new ArrayList<>();
+            for (Module m : Modules.get().getGroup(category)) {
+                if (Config.get().hiddenModules.get().contains(m)) continue;
+                group.add(m);
+            }
+            if (group.isEmpty()) continue;
+
+            group.sort(Comparator
+                .comparingInt((Module m) -> learn ? -UsageTracker.getCount(m) : 0)
+                .thenComparing(m -> m.title, String.CASE_INSENSITIVE_ORDER));
+
+            // Modern category header
+            WLabel header = list.add(theme.label(category.name, true)).expandX().widget();
+            try {
+                header.color(theme.textSecondaryColor());
+            } catch (Exception ignored) {}
+
+            for (Module m : group) {
+                ModuleSearch.Result r = new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m));
+                flat.add(r);
+                addRow(r, flat.size() - 1, false);
+            }
+        }
+
+        current = flat;
+        if (statusLabel != null) {
+            statusLabel.set(flat.size() + " modules • grouped by category • by Turbo");
+        }
+
+        WLabel footer = list.add(theme.label("by Turbo • Right-Ctrl to reopen • left toggle • right settings")).expandX().widget();
+        try {
+            footer.color(theme.textSecondaryColor());
+        } catch (Exception ignored) {}
+    }
+
+    /** Non-empty query: flat fuzzy-ranked list with category shown per row (Wurst-style). */
+    private void refreshFiltered(String query, int max, boolean desc, boolean sett, boolean tags, boolean learn) {
         List<ModuleSearch.Result> found = ModuleSearch.search(query, desc, sett, tags, max);
         if (!learn) {
             found = found.stream()
@@ -92,62 +164,55 @@ public class BetterSearchTabScreen extends WindowTabScreen {
                 .toList();
         }
         current = found;
-        if (selected >= current.size()) selected = Math.max(0, current.size() - 1);
-        if (current.isEmpty()) selected = 0;
 
-        // Status line — clean, single line
         if (statusLabel != null) {
-            if (current.isEmpty()) {
-                statusLabel.set(query.isEmpty() ? "No modules" : "No results for \"" + query + "\"");
-            } else if (query.isEmpty()) {
-                statusLabel.set(current.size() + " modules • most used first • by Turbo");
+            if (found.isEmpty()) {
+                statusLabel.set("No results for \"" + query + "\"");
             } else {
-                ModuleSearch.Result best = current.get(Math.min(selected, current.size() - 1));
-                statusLabel.set(current.size() + " results • selected: " + best.module().title + " (Enter toggle, Right settings)");
+                ModuleSearch.Result best = found.get(Math.min(selected, found.size() - 1));
+                statusLabel.set(found.size() + " results • selected: " + best.module().title + " (Enter toggle, Right settings)");
             }
         }
 
-        list.clear();
+        if (found.isEmpty()) return;
 
-        for (int i = 0; i < current.size(); i++) {
-            ModuleSearch.Result r = current.get(i);
-            boolean isSelected = i == selected;
-            boolean active = r.module().isActive();
-
-            WHorizontalList row = theme.horizontalList();
-            row.spacing = 4;
-
-            // Fancy status dot via shared renderer (green = ON, gray = OFF)
-            var dot = row.add(theme.label(active ? "●" : "○")).widget();
-            try {
-                dot.color(active ? Color.GREEN : Color.GRAY);
-            } catch (Exception ignored) {}
-
-            WWidget modWidget = theme.module(r.module());
-            int uses = UsageTracker.getCount(r.module());
-            String state = active ? "ON" : "OFF";
-            modWidget.tooltip = r.matchedText()
-                + "  [" + r.module().category.name + "]  (" + state + ")"
-                + "\n" + r.module().description
-                + (uses > 0 ? "\nUsed " + uses + "x" : "")
-                + "\nLeft-click toggle • Right-click settings";
-            row.add(modWidget).expandX();
-
-            // Clean right-side meta: category + state (bright when keyboard-selected)
-            String meta = r.module().category.name + " • " + state + (uses > 0 ? " • " + uses : "");
-            var cat = row.add(theme.label(meta)).right().widget();
-            try {
-                cat.color(isSelected ? theme.textColor() : theme.textSecondaryColor());
-            } catch (Exception ignored) {}
-
-            list.add(row).expandX().widget();
+        for (int i = 0; i < found.size(); i++) {
+            addRow(found.get(i), i, true);
         }
+    }
 
-        // Footer credit — clean, secondary color
-        var footer = list.add(theme.label("by Turbo • left toggle • right settings")).expandX().widget();
+    private void addRow(ModuleSearch.Result r, int index, boolean showCategory) {
+        boolean isSelected = index == selected;
+        boolean active = r.module().isActive();
+        int uses = UsageTracker.getCount(r.module());
+
+        WHorizontalList row = theme.horizontalList();
+        row.spacing = 4;
+
+        // Fancy status dot via shared renderer
+        var dot = row.add(theme.label(active ? "●" : "○")).widget();
         try {
-            footer.color(theme.textSecondaryColor());
+            dot.color(active ? Color.GREEN : Color.GRAY);
         } catch (Exception ignored) {}
+
+        WWidget modWidget = theme.module(r.module());
+        String state = active ? "ON" : "OFF";
+        modWidget.tooltip = r.matchedText()
+            + "  [" + r.module().category.name + "]  (" + state + ")"
+            + "\n" + r.module().description
+            + (uses > 0 ? "\nUsed " + uses + "x" : "")
+            + "\nLeft-click toggle • Right-click settings";
+        row.add(modWidget).expandX();
+
+        String meta = showCategory
+            ? r.module().category.name + " • " + state + (uses > 0 ? " • " + uses : "")
+            : state + (uses > 0 ? " • " + uses : "");
+        var metaLabel = row.add(theme.label(meta)).right().widget();
+        try {
+            metaLabel.color(isSelected ? theme.textColor() : theme.textSecondaryColor());
+        } catch (Exception ignored) {}
+
+        list.add(row).expandX().widget();
     }
 
     private void moveSelection(int delta) {
@@ -199,19 +264,5 @@ public class BetterSearchTabScreen extends WindowTabScreen {
         }
 
         return super.keyPressed(input);
-    }
-
-    @Override
-    public boolean toClipboard() {
-        return NbtUtils.toClipboard(Modules.get());
-    }
-
-    @Override
-    public boolean fromClipboard() {
-        return NbtUtils.fromClipboard(Modules.get());
-    }
-
-    @Override
-    public void reload() {
     }
 }

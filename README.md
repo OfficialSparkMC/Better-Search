@@ -1,23 +1,28 @@
 # Better Search — by Turbo
 
 A Meteor Client addon for **Minecraft 1.21.11** that adds a **separate `Search` tab**
-in the Meteor ClickGUI menu — a Wurst-Navigator-style module finder with a clean,
-scrollable UI.
+in the Meteor ClickGUI menu — a modern, clean, Wurst-style module finder.
 
 Open Meteor (`Right Shift`), click the **`Search`** tab in the top bar (next to
-Modules / Config / HUD). You get a search bar on top and a scrollable list of every
-module below. Empty query shows everything, most-used first.
+Modules / Config / HUD) — or just press **`Right-Ctrl`**. Fixed (non-draggable)
+panel: search bar fixed on top, scrollable result list below. Empty search shows the
+**FULL module list grouped by category** (every Meteor category with its modules,
+most-used first); typing filters to a flat ranked list with the category shown per
+row, like Wurst Navigator.
 
 Credits: **Turbo**.
 
 ## Features
 
 - **Separate tab**: `Search` tab in the Meteor menu top bar (`Tabs.add`), not a popup.
-  Scrollable centered window (`WindowTabScreen`), clean rows.
+  Fixed modern panel (`TabScreen`, centered, **not draggable** — no movable window style).
 - **Fancy clean UI via shared renderer**: all rows use Meteor theme widgets (shared GuiRenderer, so it matches your Meteor theme), one search box, status line, fancy rows with `●/○` active dot (green/gray) + module toggle + `category • ON/OFF • uses`,
   footer credit (`by Turbo`). Details live in tooltips.
-- **Scrollable**: results live in the window's scrollable view with scrollbar.
-  Mouse wheel + drag work; search box stays at the top.
+- **Full modules with category (Wurst-style)**: empty query shows **every module grouped
+  under its category header** (Combat, Movement, Render, ...), most-used first.
+  Typing filters to a flat list with `category` shown on every row.
+- **Scrollable**: results in a scrollable view with scrollbar.
+  Mouse wheel + drag work; search box stays fixed on top.
 - **Fuzzy matching**: exact → prefix → word-prefix (`aura kill` → `Kill Aura`) →
   all-words → substring → subsequence (`kla`) → typo-tolerant Levenshtein.
 - **Searches everything**: name, title, description, category (`combat`),
@@ -79,7 +84,7 @@ Aliases: `.bs`, `.bsearch`, `.navigator`, `.find`.
 
 | Setting | Default | Meaning |
 |---------|---------|---------|
-| `max-results` | 30 | Rows in tab list |
+| `max-results` | 100 | Rows when filtering (empty shows FULL list) |
 | `learn-usage` | true | Boost frequent modules |
 | `search-descriptions` | true | Match descriptions |
 | `search-settings` | true | Match setting names |
@@ -114,7 +119,7 @@ src/main/java/com/bettersearch/
     ModuleSearch.java         — ranking across fields
   tabs/
     BetterSearchTab.java      — Tab("Search") in top bar
-    BetterSearchTabScreen.java— WindowTabScreen, clean scrollable UI + keyboard nav
+    BetterSearchTabScreen.java— TabScreen fixed modern panel (no drag) + scroll view + grouped full list
   modules/
     BetterSearchModule.java   — Right-Ctrl keybind, opens Search tab, search tuning settings
   commands/
