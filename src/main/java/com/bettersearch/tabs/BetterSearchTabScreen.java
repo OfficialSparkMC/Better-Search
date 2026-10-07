@@ -1,5 +1,6 @@
 package com.bettersearch.tabs;
 
+import com.bettersearch.BetterSearchAddon;
 import com.bettersearch.modules.BetterSearchModule;
 import com.bettersearch.search.ModuleSearch;
 import com.bettersearch.search.UsageTracker;
@@ -304,6 +305,7 @@ public class BetterSearchTabScreen extends TabScreen {
         // Outline the right-clicked module (toggleable via inline-outline)
         if ((cfg == null || cfg.inlineOutline.get()) && r.module() == outlinedModule) {
             card.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
+            BetterSearchAddon.LOG.info("[BetterSearch] outlining card for {}", r.module().name);
         }
         int uses = UsageTracker.getCount(r.module());
         boolean active = r.module().isActive();
@@ -364,6 +366,8 @@ public class BetterSearchTabScreen extends TabScreen {
         BetterSearchModule cfg = config();
         boolean inline = cfg == null || cfg.inlineSettings.get();
         outlinedModule = m;
+        BetterSearchAddon.LOG.info("[BetterSearch] right-click on {} (inline={}, outline={})",
+            m.name, inline, cfg == null || cfg.inlineOutline.get());
         if (!inline) {
             UsageTracker.record(m);
             UsageTracker.save();
