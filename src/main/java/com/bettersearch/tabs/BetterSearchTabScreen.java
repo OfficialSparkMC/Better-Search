@@ -7,16 +7,16 @@ import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.tabs.Tab;
 import meteordevelopment.meteorclient.gui.tabs.TabScreen;
 import meteordevelopment.meteorclient.gui.widgets.WLabel;
-import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
 import meteordevelopment.meteorclient.gui.widgets.containers.WView;
 import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
+import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
+import meteordevelopment.meteorclient.gui.widgets.pressable.WCheckbox;
 import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
-import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.input.KeyInput;
 
 import java.util.ArrayList;
@@ -27,11 +27,11 @@ import static org.lwjgl.glfw.GLFW.*;
 
 /**
  * Modern, clean, fixed (non-draggable) Navigator tab, Wurst-style.
- * Uses Meteor's shared GUI renderer (theme widgets only, no custom GL).
+ * Rounded module cards rendered with Meteor's shared GuiRenderer.
  * Search bar fixed on top, scrollable result list below.
- * Empty query shows FULL module list grouped by category (like Wurst shows
- * every feature with its category); typing filters to a flat ranked list.
- * Left-click toggles, right-click opens settings.
+ * Empty query shows FULL module list grouped by category; typing filters
+ * to a flat ranked list. Left-click toggles, right-click opens settings
+ * inline (locked) or classic draggable window (toggleable).
  * Keyboard: Up/Down + Enter + Right. Opens with Right-Ctrl.
  *
  * <p>Credits: Turbo</p>
@@ -46,6 +46,9 @@ public class BetterSearchTabScreen extends TabScreen {
     /** Flat list in display order for keyboard nav (grouped mode is flattened). */
     private List<ModuleSearch.Result> current = List.of();
     private int selected = 0;
+
+    /** Non-null while inline (locked) settings are open. */
+    private Module inlineModule = null;
 
     public BetterSearchTabScreen(GuiTheme theme, Tab tab) {
         super(theme, tab);
@@ -102,6 +105,11 @@ public class BetterSearchTabScreen extends TabScreen {
     private void refreshResults() {
         if (list == null || searchBox == null) return;
 
+        if (inlineModule != null) {
+            showInline();
+            return;
+        }
+
         BetterSearchModule cfg = config();
         int max = cfg != null ? cfg.maxResults.get() : 100;
         boolean desc = cfg == null || cfg.searchDescriptions.get();
@@ -129,6 +137,11 @@ public class BetterSearchTabScreen extends TabScreen {
 
         if (selected >= current.size()) selected = Math.max(0, current.size() - 1);
         if (current.isEmpty()) selected = 0;
+
+        // Cursor first: keep the text caret in the search box after every rebuild
+        // (mouse clicks on cards would otherwise leave focus nowhere)
+        // Harmless when already focused — does not move the caret.
+        searchBox.setFocused(true);
     }
 
     /** Empty query: FULL module list grouped by category (Wurst shows everything with category). */
@@ -182,9 +195,6 @@ public class BetterSearchTabScreen extends TabScreen {
         try {
             footer.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
-
-        // Cursor first: keep typing focused after rebuild
-        searchBox.setFocused(true);
     }
 
     /** Non-empty query: flat fuzzy-ranked list with category shown per row (Wurst-style). */
@@ -213,10 +223,7 @@ public class BetterSearchTabScreen extends TabScreen {
             }
         }
 
-        if (found.isEmpty()) {
-            searchBox.setFocused(true);
-            return;
-        }
+        if (found.isEmpty()) return;
 
         if (columns <= 1) {
             for (int i = 0; i < found.size(); i++) {
@@ -225,8 +232,48 @@ public class BetterSearchTabScreen extends TabScreen {
         } else {
             addGrid(found, 0);
         }
+    }
 
-        searchBox.setFocused(true);
+    private ModuleCard makeCard(ModuleSearch.Result r, int flatIndex, String meta) {
+        BetterSearchModule cfg = config();
+        ModuleCard card = new ModuleCard(r);
+        card.selected = flatIndex == selected;
+        card.rounded = cfg == null || cfg.roundedCards.get();
+        card.radius = cfg != null ? cfg.cornerRadius.get() : 6;
+        card.padExtra = cfg != null ? cfg.cardPadding.get() : 2;
+        card.showDot = cfg == null || cfg.showDot.get();
+        card.meta = meta;
+        int uses = UsageTracker.getCount(r.module());
+        boolean active = r.module().isActive();
+        String state = active ? "ON" : "OFF";
+        card.tooltip = r.matchedText()
+            + "  [" + r.module().category.name + "]  (" + state + ")"
+            + "\n" + r.module().description
+            + (uses > 0 ? "\nUsed " + uses + "x" : "")
+            + "\nLeft-click toggle • Right-click settings";
+        card.onToggle = () -> {
+            r.module().toggle();
+            UsageTracker.record(r.module());
+            UsageTracker.save();
+            refreshResults();
+        };
+        card.onSettings = () -> openModuleSettings(r.module());
+        return card;
+    }
+
+    private String rowMeta(ModuleSearch.Result r, boolean showCategory) {
+        BetterSearchModule cfg = config();
+        boolean showCatSetting = cfg == null || cfg.showCategory.get();
+        int uses = UsageTracker.getCount(r.module());
+        String state = r.module().isActive() ? "ON" : "OFF";
+        boolean showCatHere = showCategory && showCatSetting;
+        return showCatHere
+            ? r.module().category.name + " • " + state + (uses > 0 ? " • " + uses : "")
+            : state + (uses > 0 ? " • " + uses : "");
+    }
+
+    private void addRow(ModuleSearch.Result r, int index, boolean showCategory) {
+        list.add(makeCard(r, index, rowMeta(r, showCategory))).expandX().widget();
     }
 
     /** Multiple modules per line: grid rows with N compact cards each. */
@@ -234,7 +281,6 @@ public class BetterSearchTabScreen extends TabScreen {
         BetterSearchModule cfg = config();
         int columns = Math.max(2, Math.min(3, cfg != null ? cfg.columns.get() : 2));
         int innerGap = cfg != null ? cfg.rowInnerGap.get() : 4;
-        boolean showDot = cfg == null || cfg.showDot.get();
 
         for (int i = 0; i < results.size(); i += columns) {
             WHorizontalList row = theme.horizontalList();
@@ -242,90 +288,98 @@ public class BetterSearchTabScreen extends TabScreen {
 
             for (int j = 0; j < columns && i + j < results.size(); j++) {
                 ModuleSearch.Result r = results.get(i + j);
-                int flatIndex = baseIndex + i + j;
-                boolean isSelected = flatIndex == selected;
-                boolean active = r.module().isActive();
-
-                WHorizontalList cell = theme.horizontalList();
-                cell.spacing = 2;
-
-                if (showDot) {
-                    var dot = cell.add(theme.label(active ? "●" : "○")).widget();
-                    try {
-                        // Yellow = keyboard-selected so grid selection stays visible
-                        if (isSelected) dot.color(Color.YELLOW);
-                        else dot.color(active ? Color.GREEN : Color.GRAY);
-                    } catch (Exception ignored) {}
-                }
-
-                WWidget modWidget = theme.module(r.module());
-                int uses = UsageTracker.getCount(r.module());
-                String state = active ? "ON" : "OFF";
-                modWidget.tooltip = r.matchedText()
-                    + "  [" + r.module().category.name + "]  (" + state + ")"
-                    + "\n" + r.module().description
-                    + (uses > 0 ? "\nUsed " + uses + "x" : "")
-                    + "\nLeft-click toggle • Right-click settings";
-                cell.add(modWidget).expandX();
-
-                row.add(cell).expandX().widget();
+                // Compact grid cards: no meta text (tooltip carries details)
+                row.add(makeCard(r, baseIndex + i + j, null)).expandX().widget();
             }
 
             list.add(row).expandX().widget();
         }
     }
 
-    private void addRow(ModuleSearch.Result r, int index, boolean showCategory) {
+    // Inline (locked, non-draggable) settings
+
+    private void openModuleSettings(Module m) {
         BetterSearchModule cfg = config();
-        boolean showDot = cfg == null || cfg.showDot.get();
-        boolean showCatSetting = cfg == null || cfg.showCategory.get();
-        int innerGap = cfg != null ? cfg.rowInnerGap.get() : 4;
-
-        boolean isSelected = index == selected;
-        boolean active = r.module().isActive();
-        int uses = UsageTracker.getCount(r.module());
-
-        WHorizontalList row = theme.horizontalList();
-        row.spacing = innerGap;
-
-        // Customizable dot (row size/density via gaps, dot toggle)
-        if (showDot) {
-            var dot = row.add(theme.label(active ? "●" : "○")).widget();
-            try {
-                if (isSelected) dot.color(Color.YELLOW);
-                else dot.color(active ? Color.GREEN : Color.GRAY);
-            } catch (Exception ignored) {}
+        boolean inline = cfg == null || cfg.inlineSettings.get();
+        if (!inline) {
+            UsageTracker.record(m);
+            UsageTracker.save();
+            meteordevelopment.meteorclient.MeteorClient.mc.setScreen(theme.moduleScreen(m));
+            return;
         }
+        UsageTracker.record(m);
+        UsageTracker.save();
+        openInline(m);
+    }
 
-        WWidget modWidget = theme.module(r.module());
-        String state = active ? "ON" : "OFF";
-        modWidget.tooltip = r.matchedText()
-            + "  [" + r.module().category.name + "]  (" + state + ")"
-            + "\n" + r.module().description
-            + (uses > 0 ? "\nUsed " + uses + "x" : "")
-            + "\nLeft-click toggle • Right-click settings";
-        row.add(modWidget).expandX();
+    private void openInline(Module m) {
+        inlineModule = m;
+        searchBox.visible = false;
+        if (statusLabel != null) statusLabel.visible = false;
+        showInline();
+    }
 
-        boolean showCatHere = showCategory && showCatSetting;
-        String meta = showCatHere
-            ? r.module().category.name + " • " + state + (uses > 0 ? " • " + uses : "")
-            : state + (uses > 0 ? " • " + uses : "");
-        var metaLabel = row.add(theme.label(meta)).right().widget();
+    private void closeInline() {
+        inlineModule = null;
+        searchBox.visible = true;
+        BetterSearchModule cfg = config();
+        if (statusLabel != null) statusLabel.visible = cfg == null || cfg.showStatus.get();
+        refreshResults();
+        searchBox.setFocused(true);
         try {
-            metaLabel.color(isSelected ? theme.textColor() : theme.textSecondaryColor());
+            searchBox.setCursorMax();
+        } catch (Exception ignored) {}
+    }
+
+    private void showInline() {
+        Module m = inlineModule;
+        if (m == null) return;
+        list.clear();
+
+        WHorizontalList top = theme.horizontalList();
+        top.spacing = 4;
+        WButton back = theme.button("Back");
+        back.action = this::closeInline;
+        top.add(back).widget();
+        top.add(theme.label(m.title, true)).expandX().widget();
+        WCheckbox activeBox = theme.checkbox(m.isActive());
+        activeBox.action = () -> {
+            if (m.isActive() != activeBox.checked) {
+                m.toggle();
+                UsageTracker.record(m);
+                UsageTracker.save();
+            }
+        };
+        top.add(activeBox).right().widget();
+        list.add(top).expandX().widget();
+
+        WLabel desc = list.add(theme.label(m.description)).expandX().widget();
+        try {
+            desc.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
 
-        list.add(row).expandX().widget();
+        list.add(theme.label("Locked in Better Search (non-draggable) • by Turbo")).expandX().widget();
+        list.add(theme.settings(m.settings)).expandX().widget();
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (inlineModule != null && list != null) {
+            try {
+                inlineModule.settings.tick(list, theme);
+            } catch (Exception ignored) {}
+        }
     }
 
     private void moveSelection(int delta) {
-        if (current.isEmpty()) return;
+        if (inlineModule != null || current.isEmpty()) return;
         selected = Math.floorMod(selected + delta, current.size());
         refreshResults();
     }
 
     private void toggleSelected() {
-        if (current.isEmpty() || selected < 0 || selected >= current.size()) return;
+        if (inlineModule != null || current.isEmpty() || selected < 0 || selected >= current.size()) return;
         ModuleSearch.Result r = current.get(selected);
         r.module().toggle();
         UsageTracker.record(r.module());
@@ -334,16 +388,21 @@ public class BetterSearchTabScreen extends TabScreen {
     }
 
     private void openSelectedSettings() {
-        if (current.isEmpty() || selected < 0 || selected >= current.size()) return;
-        ModuleSearch.Result r = current.get(selected);
-        UsageTracker.record(r.module());
-        UsageTracker.save();
-        meteordevelopment.meteorclient.MeteorClient.mc.setScreen(theme.moduleScreen(r.module()));
+        if (inlineModule != null || current.isEmpty() || selected < 0 || selected >= current.size()) return;
+        openModuleSettings(current.get(selected).module());
     }
 
     @Override
     public boolean keyPressed(KeyInput input) {
         int key = input.key();
+
+        if (inlineModule != null) {
+            if (key == GLFW_KEY_LEFT || key == GLFW_KEY_BACKSPACE) {
+                closeInline();
+                return true;
+            }
+            return super.keyPressed(input);
+        }
 
         if (key == GLFW_KEY_DOWN) {
             moveSelection(1);

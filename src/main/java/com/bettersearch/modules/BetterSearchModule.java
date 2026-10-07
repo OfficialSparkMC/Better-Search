@@ -124,6 +124,38 @@ public class BetterSearchModule extends Module {
         .build()
     );
 
+    public final Setting<Boolean> roundedCards = sgAppearance.add(new BoolSetting.Builder()
+        .name("rounded-cards")
+        .description("Rounded corners on module cards (shared renderer).")
+        .defaultValue(true)
+        .build()
+    );
+
+    public final Setting<Integer> cornerRadius = sgAppearance.add(new IntSetting.Builder()
+        .name("corner-radius")
+        .description("Corner radius of module cards.")
+        .defaultValue(6)
+        .min(0)
+        .sliderMax(12)
+        .build()
+    );
+
+    public final Setting<Integer> cardPadding = sgAppearance.add(new IntSetting.Builder()
+        .name("card-padding")
+        .description("Inner padding of module cards (= module size).")
+        .defaultValue(2)
+        .min(0)
+        .sliderMax(8)
+        .build()
+    );
+
+    public final Setting<Boolean> inlineSettings = sgAppearance.add(new BoolSetting.Builder()
+        .name("inline-settings")
+        .description("Open module settings INSIDE Better Search (locked, non-draggable). Off = classic draggable Meteor window.")
+        .defaultValue(true)
+        .build()
+    );
+
     public BetterSearchModule() {
         super(BetterSearchAddon.CATEGORY, "better-search", "Wurst-like Navigator search tab for all modules. Right-Ctrl opens it. By Turbo.", "navigator", "search", "find", "bs");
         keybind.set(true, GLFW_KEY_RIGHT_CONTROL, 0);

@@ -16,8 +16,16 @@ Credits: **Turbo**.
 
 - **Separate tab**: `Search` tab in the Meteor menu top bar (`Tabs.add`), not a popup.
   Fixed modern panel (`TabScreen`, centered, **not draggable** — no movable window style).
-- **Fancy clean UI via shared renderer**: all rows use Meteor theme widgets (shared GuiRenderer, so it matches your Meteor theme), one search box, status line, fancy rows with `●/○` active dot (green/gray) + module toggle + `category • ON/OFF • uses`,
-  footer credit (`by Turbo`). Details live in tooltips.
+- **Fancy clean UI via shared renderer**: custom rounded module cards drawn with
+  Meteor's shared `GuiRenderer` (matches your theme), one search box, status line,
+  fancy rows with `●/○` active dot (green/gray, yellow when keyboard-selected) +
+  module title + `category • ON/OFF • uses`. Details live in tooltips.
+- **Rounded corners + module size**: `rounded-cards` toggle, `corner-radius` (0-12),
+  `card-padding` (inner card size), plus `panel-width`, `row-gap`, `row-inner-gap`,
+  `columns` grid.
+- **Locked settings in Better Search**: right-click / `Right` opens module settings
+  **inline in the tab (non-draggable)** by default; `inline-settings` off restores the
+  classic draggable Meteor window. `Left`/`Backspace` goes back.
 - **Full modules with category (Wurst-style)**: empty query shows **every module grouped
   under its category header** (Combat, Movement, Render, ...), most-used first.
   Typing filters to a flat list with `category` shown on every row.
@@ -25,8 +33,8 @@ Credits: **Turbo**.
   Mouse wheel + drag work; search box stays fixed on top.
 - **Multiple modules per line**: `columns` setting (1-3, default 1) packs modules
   into a grid; selected cell dot turns yellow.
-- **Cursor first**: search box is focused with cursor at end on open and after
-  every refresh, so typing filters instantly.
+- **Cursor first**: the text caret sits in the search box on open (cursor at end)
+  and stays there after every refresh, so typing always filters instantly.
 - **Perf tweaks**: per-module searchable data cached (lowercased once, setting titles
   cached); excellent name/title hits skip description/settings passes; Levenshtein
   skipped when length difference alone exceeds the threshold (incl. per-word).
@@ -103,6 +111,10 @@ Aliases: `.bs`, `.bsearch`, `.navigator`, `.find`.
 | `show-dot` | true | Show `●/○` active dot |
 | `show-category` | true | Show category per row |
 | `show-status` | true | Show status line |
+| `rounded-cards` | true | Rounded corners on module cards |
+| `corner-radius` | 6 | Corner radius (0-12) |
+| `card-padding` | 2 | Inner card padding = module size (0-8) |
+| `inline-settings` | true | Settings open locked inside Search (off = draggable window) |
 
 Delete `meteor-client/better-search-usage.json` to reset learning.
 
