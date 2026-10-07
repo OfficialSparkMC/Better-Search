@@ -165,6 +165,7 @@ public class BetterSearchTabScreen extends TabScreen {
         if (list == null || searchBox == null) return;
 
         if (inlineModule != null) {
+            BetterSearchAddon.LOG.info("[BetterSearch] refresh WHILE inline open");
             showInline();
             return;
         }
@@ -416,12 +417,14 @@ public class BetterSearchTabScreen extends TabScreen {
 
     private void openInline(Module m) {
         inlineModule = m;
+        BetterSearchAddon.LOG.info("[BetterSearch] inline OPEN for {}", m.name);
         searchBox.visible = false;
         if (statusLabel != null) statusLabel.visible = false;
         showInline();
     }
 
     private void closeInline() {
+        BetterSearchAddon.LOG.info("[BetterSearch] inline CLOSE");
         inlineModule = null;
         searchBox.visible = true;
         BetterSearchModule cfg = config();
@@ -475,6 +478,7 @@ public class BetterSearchTabScreen extends TabScreen {
             };
             context.onSettings = () -> {};
             list.add(context).expandX().widget();
+            BetterSearchAddon.LOG.info("[BetterSearch] inline SHOW menu for {} (outlined context card added)", m.name);
         }
 
         list.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
