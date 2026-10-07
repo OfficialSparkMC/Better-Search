@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "better-search",
+  "version": "${version}",
+  "name": "Better Search",
+  "description": "Wurst-like Navigator search for Meteor modules: fuzzy search, synonyms, usage learning, keyboard navigation.",
+  "authors": [
+    "turbo"
+  ],
+  "contact": {
+    "sources": "https://github.com/turbo/better-search"
+  },
+  "icon": "assets/better-search/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "meteor": [
+      "com.bettersearch.BetterSearchAddon"
+    ]
+  },
+  "mixins": [
+    "better-search.mixins.json"
+  ],
+  "custom": {
+    "meteor-client:color": "85,170,255",
+    "modmenu": {
+      "parent": {
+        "id": "meteor-client"
+      }
+    }
+  },
+  "depends": {
+    "java": ">=21",
+    "minecraft": ["${mc_version}"],
+    "meteor-client": "*"
+  }
+}
