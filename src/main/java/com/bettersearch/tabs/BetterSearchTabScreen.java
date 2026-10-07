@@ -51,6 +51,9 @@ public class BetterSearchTabScreen extends TabScreen {
     /** Non-null while inline (locked) settings are open. */
     private Module inlineModule = null;
 
+    /** Last right-clicked module — stays outlined in the list. */
+    private Module outlinedModule = null;
+
     /** Session-persistent drag offset for the panel. */
     private static double savedDragX = 0;
     private static double savedDragY = 0;
@@ -75,54 +78,27 @@ public class BetterSearchTabScreen extends TabScreen {
         }
     }
 
-    /** Thin drag handle shown only when draggable-panel is on. */
-    private class WDragHandle extends WWidget {
-        private boolean dragging;
+    /** Thin drag handle shown only when draggable-panel is on (visual only, drag handled by screen). */
+    private WDragHandle dragHandle = null;
+    private boolean draggingPanel = false;
+    private double lastMoveX, lastMoveY;
+    private boolean hasLastMove = false;
 
+    private static class WDragHandle extends WWidget {
         @Override
         protected void onCalculateSize() {
             width = theme.scale(480);
             double minWidth = theme.scale(this.minWidth);
             if (width < minWidth) width = minWidth;
-            height = theme.textHeight() + theme.scale(6);
+            height = theme.textHeight() + theme.scale(10);
         }
 
         @Override
         protected void onRender(meteordevelopment.meteorclient.gui.renderer.GuiRenderer renderer, double mouseX, double mouseY, double delta) {
-            String s = "⠿ Better Search — drag me • by Turbo";
+            String s = mouseOver ? "⠿ Better Search — dragging" : "⠿ Better Search — drag me";
             double tw = theme.textWidth(s);
-            renderer.text(s, x + width / 2 - tw / 2, y + theme.scale(3), theme.textSecondaryColor(), false);
-        }
-
-        @Override
-        public boolean onMouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
-            if (mouseOver && click.button() == GLFW_MOUSE_BUTTON_LEFT) {
-                dragging = true;
-                return true;
-            }
-            return false;
-        }
-
-        @Override
-        public boolean onMouseReleased(net.minecraft.client.gui.Click click) {
-            dragging = false;
-            return false;
-        }
-
-        @Override
-        public void onMouseMoved(double mouseX, double mouseY, double lastMouseX, double lastMouseY) {
-            if (!dragging || panel == null) return;
-            double dx = mouseX - lastMouseX;
-            double dy = mouseY - lastMouseY;
-            savedDragX = clamp(savedDragX + dx, -420, 420);
-            savedDragY = clamp(savedDragY + dy, -40, 420);
-            panel.dragX = savedDragX;
-            panel.dragY = savedDragY;
-            panel.invalidate();
-        }
-
-        private double clamp(double v, double min, double max) {
-            return Math.max(min, Math.min(max, v));
+            renderer.text(s, x + width / 2 - tw / 2, y + theme.scale(5),
+                mouseOver ? theme.textColor() : theme.textSecondaryColor(), false);
         }
     }
 
@@ -138,7 +114,10 @@ public class BetterSearchTabScreen extends TabScreen {
 
         BetterSearchModule cfg = config();
         if (cfg != null && cfg.draggablePanel.get()) {
-            panel.add(new WDragHandle()).expandX().widget();
+            dragHandle = new WDragHandle();
+            panel.add(dragHandle).expandX().widget();
+        } else {
+            dragHandle = null;
         }
 
         searchBox = panel.add(theme.textBox("", "Search modules... (Right-Ctrl to open)")).expandX().widget();
@@ -267,10 +246,10 @@ public class BetterSearchTabScreen extends TabScreen {
 
         current = flat;
         if (statusLabel != null) {
-            statusLabel.set(flat.size() + " modules • grouped by category • by Turbo");
+            statusLabel.set(flat.size() + " modules • grouped by category");
         }
 
-        WLabel footer = list.add(theme.label("by Turbo • Right-Ctrl to reopen • left toggle • right settings")).expandX().widget();
+        WLabel footer = list.add(theme.label("Right-Ctrl to reopen • left toggle • right settings")).expandX().widget();
         try {
             footer.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
@@ -322,6 +301,10 @@ public class BetterSearchTabScreen extends TabScreen {
         card.padExtra = cfg != null ? cfg.cardPadding.get() : 2;
         card.showDot = cfg == null || cfg.showDot.get();
         card.meta = meta;
+        // Outline the right-clicked module (toggleable via inline-outline)
+        if ((cfg == null || cfg.inlineOutline.get()) && r.module() == outlinedModule) {
+            card.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
+        }
         int uses = UsageTracker.getCount(r.module());
         boolean active = r.module().isActive();
         String state = active ? "ON" : "OFF";
@@ -380,6 +363,7 @@ public class BetterSearchTabScreen extends TabScreen {
     private void openModuleSettings(Module m) {
         BetterSearchModule cfg = config();
         boolean inline = cfg == null || cfg.inlineSettings.get();
+        outlinedModule = m;
         if (!inline) {
             UsageTracker.record(m);
             UsageTracker.save();
@@ -437,13 +421,13 @@ public class BetterSearchTabScreen extends TabScreen {
             desc.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
 
-        // Outlined context card for the right-clicked module (toggleable via inline-outline)
+        // Outlined context card for the right-clicked module (toggleable via inline-outline).
+        // makeCard already applies the yellow outline since outlinedModule == m.
         BetterSearchModule cfg = config();
         if (cfg == null || cfg.inlineOutline.get()) {
             ModuleSearch.Result r = new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m));
             ModuleCard context = makeCard(r, -1, rowMeta(r, true));
             context.selected = false;
-            context.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
             context.onToggle = () -> {
                 m.toggle();
                 UsageTracker.record(m);
@@ -454,7 +438,7 @@ public class BetterSearchTabScreen extends TabScreen {
             list.add(context).expandX().widget();
         }
 
-        list.add(theme.label("Locked in Better Search (non-draggable) • by Turbo")).expandX().widget();
+        list.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
         list.add(theme.settings(m.settings)).expandX().widget();
     }
 
@@ -522,5 +506,45 @@ public class BetterSearchTabScreen extends TabScreen {
         }
 
         return super.keyPressed(input);
+    }
+
+    // Screen-level panel dragging (robust: direct move, no relayout fight)
+
+    @Override
+    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
+        if (dragHandle != null && dragHandle.mouseOver && click.button() == GLFW_MOUSE_BUTTON_LEFT) {
+            draggingPanel = true;
+            return true;
+        }
+        return super.mouseClicked(click, doubled);
+    }
+
+    @Override
+    public boolean mouseReleased(net.minecraft.client.gui.Click click) {
+        draggingPanel = false;
+        return super.mouseReleased(click);
+    }
+
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        super.mouseMoved(mouseX, mouseY);
+        if (draggingPanel && panel != null && hasLastMove) {
+            // super() works in scaled widget units, so scale deltas the same way
+            double s = meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor();
+            double nx = clamp(savedDragX + (mouseX - lastMoveX) * s, -420, 420);
+            double ny = clamp(savedDragY + (mouseY - lastMoveY) * s, -40, 420);
+            panel.move(nx - savedDragX, ny - savedDragY);
+            savedDragX = nx;
+            savedDragY = ny;
+            panel.dragX = nx;
+            panel.dragY = ny;
+        }
+        lastMoveX = mouseX;
+        lastMoveY = mouseY;
+        hasLastMove = true;
+    }
+
+    private static double clamp(double v, double min, double max) {
+        return Math.max(min, Math.min(max, v));
     }
 }

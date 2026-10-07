@@ -171,7 +171,7 @@ public class BetterSearchModule extends Module {
     );
 
     public BetterSearchModule() {
-        super(BetterSearchAddon.CATEGORY, "better-search", "Wurst-like Navigator search tab for all modules. Right-Ctrl opens it. By Turbo.", "navigator", "search", "find", "bs");
+        super(BetterSearchAddon.CATEGORY, "better-search", "Wurst-like Navigator search tab for all modules. Right-Ctrl opens it.", "navigator", "search", "find", "bs");
         keybind.set(true, GLFW_KEY_RIGHT_CONTROL, 0);
         chatFeedback = false;
         UsageTracker.load();

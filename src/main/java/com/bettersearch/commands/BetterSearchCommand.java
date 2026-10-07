@@ -25,7 +25,7 @@ import java.util.List;
  */
 public class BetterSearchCommand extends Command {
     public BetterSearchCommand() {
-        super("better-search", "Wurst-like Navigator search for modules (by Turbo).", "bs", "bsearch", "navigator", "find");
+        super("better-search", "Wurst-like Navigator search for modules.", "bs", "bsearch", "navigator", "find");
     }
 
     @Override
