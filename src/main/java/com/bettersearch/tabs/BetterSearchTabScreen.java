@@ -12,6 +12,7 @@ import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
 import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.misc.NbtUtils;
+import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.input.KeyInput;
 
 import java.util.List;
@@ -19,10 +20,11 @@ import java.util.List;
 import static org.lwjgl.glfw.GLFW.*;
 
 /**
- * Clean, scrollable Navigator tab (Wurst-style).
- * Search bar on top, scrollable result list below.
+ * Fancy, clean, scrollable Navigator tab (Wurst-style) using Meteor's shared
+ * GUI renderer (all widgets go through the theme / GuiRenderer, so it matches
+ * the active Meteor theme). Search bar on top, scrollable result list below.
  * Left-click toggles, right-click opens settings.
- * Keyboard: Up/Down + Enter + Right.
+ * Keyboard: Up/Down + Enter + Right. Opens with Right-Ctrl.
  *
  * <p>Credits: Turbo</p>
  */
@@ -40,8 +42,12 @@ public class BetterSearchTabScreen extends WindowTabScreen {
 
     @Override
     public void initWidgets() {
+        // Scrollable window with visible scrollbar (fancy + scrollable)
+        window.view.hasScrollBar = true;
+        window.view.scrollOnlyWhenMouseOver = false;
+
         // Search bar — always visible at top of the scrollable window
-        searchBox = add(theme.textBox("", "Search modules...")).expandX().widget();
+        searchBox = add(theme.textBox("", "Search modules... (Right-Ctrl to open)")).expandX().widget();
         searchBox.setFocused(true);
         searchBox.minWidth = 260;
         searchBox.action = () -> {
@@ -106,13 +112,20 @@ public class BetterSearchTabScreen extends WindowTabScreen {
         for (int i = 0; i < current.size(); i++) {
             ModuleSearch.Result r = current.get(i);
             boolean isSelected = i == selected;
+            boolean active = r.module().isActive();
 
             WHorizontalList row = theme.horizontalList();
             row.spacing = 4;
 
+            // Fancy status dot via shared renderer (green = ON, gray = OFF)
+            var dot = row.add(theme.label(active ? "●" : "○")).widget();
+            try {
+                dot.color(active ? Color.GREEN : Color.GRAY);
+            } catch (Exception ignored) {}
+
             WWidget modWidget = theme.module(r.module());
             int uses = UsageTracker.getCount(r.module());
-            String state = r.module().isActive() ? "ON" : "OFF";
+            String state = active ? "ON" : "OFF";
             modWidget.tooltip = r.matchedText()
                 + "  [" + r.module().category.name + "]  (" + state + ")"
                 + "\n" + r.module().description
@@ -120,8 +133,9 @@ public class BetterSearchTabScreen extends WindowTabScreen {
                 + "\nLeft-click toggle • Right-click settings";
             row.add(modWidget).expandX();
 
-            // Clean right-side meta: category only (bright when keyboard-selected)
-            var cat = row.add(theme.label(r.module().category.name)).right().widget();
+            // Clean right-side meta: category + state (bright when keyboard-selected)
+            String meta = r.module().category.name + " • " + state + (uses > 0 ? " • " + uses : "");
+            var cat = row.add(theme.label(meta)).right().widget();
             try {
                 cat.color(isSelected ? theme.textColor() : theme.textSecondaryColor());
             } catch (Exception ignored) {}

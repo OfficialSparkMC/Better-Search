@@ -13,16 +13,16 @@ import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.systems.modules.Module;
 
-import static org.lwjgl.glfw.GLFW.GLFW_KEY_N;
+import static org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_CONTROL;
 
 /**
  * Wurst-Navigator-style module search.
  * Opens the separate "Search" tab in the Meteor menu (scrollable, clean UI).
- * Press the bind (default N) to jump straight to it.
+ * Press Right-Ctrl (default bind) to jump straight to it.
  * Left-click toggles, right-click opens settings,
  * Up/Down + Enter work from the keyboard.
  *
- * <p>Credits: Turbo</p>
+ * <p>Uses Meteor's shared GUI renderer (theme widgets) for a fancy themed UI. Credits: Turbo</p>
  */
 @SearchTags({"navigator", "find", "lookup", "wurst", "search gui", "module finder"})
 public class BetterSearchModule extends Module {
@@ -67,8 +67,8 @@ public class BetterSearchModule extends Module {
     );
 
     public BetterSearchModule() {
-        super(BetterSearchAddon.CATEGORY, "better-search", "Wurst-like Navigator search for all modules. By Turbo.", "navigator", "search", "find", "bs");
-        keybind.set(true, GLFW_KEY_N, 0);
+        super(BetterSearchAddon.CATEGORY, "better-search", "Wurst-like Navigator search tab for all modules. Right-Ctrl opens it. By Turbo.", "navigator", "search", "find", "bs");
+        keybind.set(true, GLFW_KEY_RIGHT_CONTROL, 0);
         chatFeedback = false;
         UsageTracker.load();
     }

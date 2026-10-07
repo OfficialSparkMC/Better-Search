@@ -14,10 +14,8 @@ Credits: **Turbo**.
 
 - **Separate tab**: `Search` tab in the Meteor menu top bar (`Tabs.add`), not a popup.
   Scrollable centered window (`WindowTabScreen`), clean rows.
-- **Clean UI**: one search box, one status line (`12 results • selected: X`),
-  one row per module (`[module toggle]` + `[category]` in secondary color),
-  footer credit (`by Turbo`). Details (matched alias, ON/OFF, description, use count)
-  live in the tooltip, not in the row.
+- **Fancy clean UI via shared renderer**: all rows use Meteor theme widgets (shared GuiRenderer, so it matches your Meteor theme), one search box, status line, fancy rows with `●/○` active dot (green/gray) + module toggle + `category • ON/OFF • uses`,
+  footer credit (`by Turbo`). Details live in tooltips.
 - **Scrollable**: results live in the window's scrollable view with scrollbar.
   Mouse wheel + drag work; search box stays at the top.
 - **Fuzzy matching**: exact → prefix → word-prefix (`aura kill` → `Kill Aura`) →
@@ -33,7 +31,7 @@ Credits: **Turbo**.
   saved to `meteor-client/better-search-usage.json`, most-used ranks first.
 - **Keyboard**: `Up/Down` move, `Enter` toggle, `Right` open settings, `Esc` close.
 - **Mouse**: left-click toggles, right-click opens settings.
-- **Shortcuts**: `N` module (momentary, opens the Search tab) + `.better-search` / `.bs` chat command.
+- **Shortcuts**: `Right-Ctrl` opens the Search tab (momentary module bind, rebindable) + `.better-search` / `.bs` chat command.
 
 ## Requirements
 
@@ -46,11 +44,11 @@ Credits: **Turbo**.
 
 1. Install Fabric Loader 0.18.2 for Minecraft 1.21.11.
 2. Put Meteor Client (1.21.11) + this mod's JAR into `mods/`.
-3. Launch, press `Right Shift`, click the **`Search`** tab.
+3. Launch, press `Right-Ctrl` — the `Search` tab appears (or `Right Shift` → click `Search`).
 
 ## Usage
 
-1. Meteor menu → **`Search`** tab (or press `N`, or `.better-search`).
+1. Press `Right-Ctrl` (default bind, rebindable in ClickGUI → Better Search) or Meteor menu → `Search` tab, or `.better-search`.
 2. Type, e.g. `kill`, `fly`, `esp`, `range`, `combat`.
 3. `Enter` toggles, `Right` opens settings. Mouse: left toggle, right settings.
 
@@ -118,7 +116,7 @@ src/main/java/com/bettersearch/
     BetterSearchTab.java      — Tab("Search") in top bar
     BetterSearchTabScreen.java— WindowTabScreen, clean scrollable UI + keyboard nav
   modules/
-    BetterSearchModule.java   — N keybind, opens Search tab, search tuning settings
+    BetterSearchModule.java   — Right-Ctrl keybind, opens Search tab, search tuning settings
   commands/
     BetterSearchCommand.java  — .better-search (open/list/toggle)
   mixin/
