@@ -71,11 +71,14 @@ public class ModuleCard extends WPressable {
         double rad = theme.scale(radius);
 
         if (outline != null) {
-            // Thick border (min 2 units) so it is visible on every GUI scale
+            // Border as 4 plain quads (no texture dependency) + tinted bg below.
+            // Visible on every theme and GUI scale.
             double o = theme.scale(1.5);
             if (o < 2) o = 2;
-            if (rounded && rad > 0) rounded(renderer, x - o, y - o, width + o * 2, height + o * 2, rad + o, outline);
-            else renderer.quad(x - o, y - o, width + o * 2, height + o * 2, outline);
+            renderer.quad(x - o, y - o, width + o * 2, o, outline); // top
+            renderer.quad(x - o, y + height, width + o * 2, o, outline); // bottom
+            renderer.quad(x - o, y, o, height, outline); // left
+            renderer.quad(x + width, y, o, height, outline); // right
         }
 
         if (rounded && rad > 0) rounded(renderer, x, y, width, height, rad, bg);
