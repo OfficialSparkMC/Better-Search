@@ -425,13 +425,13 @@ public class BetterSearchTabScreen extends TabScreen {
             desc.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
 
-        // Outlined context card for the right-clicked module (toggleable via inline-outline).
-        // makeCard already applies the yellow outline since outlinedModule == m.
-        BetterSearchModule cfg = config();
-        if (cfg == null || cfg.inlineOutline.get()) {
+        // Context card for the right-clicked module.
+        // ALWAYS outlined + tinted (no toggle) so the open menu visibly marks its module.
+        {
             ModuleSearch.Result r = new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m));
             ModuleCard context = makeCard(r, -1, rowMeta(r, true));
             context.selected = false;
+            context.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
             context.onToggle = () -> {
                 m.toggle();
                 UsageTracker.record(m);

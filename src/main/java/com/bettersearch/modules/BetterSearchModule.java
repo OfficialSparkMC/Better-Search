@@ -158,7 +158,7 @@ public class BetterSearchModule extends Module {
 
     public final Setting<Boolean> inlineOutline = sgAppearance.add(new BoolSetting.Builder()
         .name("inline-outline")
-        .description("Outline the right-clicked module while its settings are open inline.")
+        .description("Keep a yellow outline on the right-clicked module back in the search list.")
         .defaultValue(true)
         .build()
     );
