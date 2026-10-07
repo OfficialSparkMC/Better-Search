@@ -381,6 +381,33 @@ public class BetterSearchTabScreen extends TabScreen {
         }
 
         @Override
+        public void render(net.minecraft.client.gui.DrawContext context, int mouseX, int mouseY, float delta) {
+            super.render(context, mouseX, mouseY, delta);
+            // Yellow outline around Meteor's outer window.
+            // Widget coords are raw pixels; DrawContext works in scaled units.
+            try {
+                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
+                int pad = 3;
+                int x = (int) Math.floor(window.x / s) - pad;
+                int y = (int) Math.floor(window.y / s) - pad;
+                int w = (int) Math.ceil(window.width / s) + pad * 2;
+                int h = (int) Math.ceil(window.height / s) + pad * 2;
+                int yellow = 0xFFFFFF00;
+                int t = 2;
+                // Outer 2px ring
+                context.fill(x - 2, y - 2, x + w + 2, y, yellow);
+                context.fill(x - 2, y + h, x + w + 2, y + h + 2, yellow);
+                context.fill(x - 2, y, x, y + h, yellow);
+                context.fill(x + w, y, x + w + 2, y + h, yellow);
+                // Inner 2px ring
+                context.fill(x, y, x + w, y + t, yellow);
+                context.fill(x, y + h - t, x + w, y + h, yellow);
+                context.fill(x, y, x + t, y + h, yellow);
+                context.fill(x + w - t, y, x + w, y + h, yellow);
+            } catch (Exception ignored) {}
+        }
+
+        @Override
         public void initWidgets() {
             super.initWidgets();
             // Prepend marker so it sits at the very top without disturbing Meteor's layout.
