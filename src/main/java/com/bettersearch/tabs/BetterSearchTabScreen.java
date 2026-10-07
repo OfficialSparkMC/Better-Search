@@ -362,6 +362,41 @@ public class BetterSearchTabScreen extends TabScreen {
 
     // Inline (locked, non-draggable) settings
 
+    /**
+     * Classic draggable Meteor window + a yellow marker on top identifying the
+     * module picked from Better Search. Used when inline-settings is OFF
+     * (Meteor's own window has no outline API, so we mark it instead).
+     */
+    public static class OutlinedModuleScreen extends meteordevelopment.meteorclient.gui.screens.ModuleScreen {
+        private final Module mod;
+
+        public OutlinedModuleScreen(GuiTheme theme, Module module) {
+            super(theme, module);
+            this.mod = module;
+        }
+
+        @Override
+        public void initWidgets() {
+            super.initWidgets();
+            // Prepend marker so it sits at the very top without disturbing Meteor's layout.
+            // (Content cells live in window.view, not window itself.)
+            WLabel marker = theme.label("◉ " + mod.title + " — from Better Search");
+            try {
+                marker.color(meteordevelopment.meteorclient.utils.render.color.Color.YELLOW);
+            } catch (Exception ignored) {}
+            java.util.List<meteordevelopment.meteorclient.gui.utils.Cell<?>> cells =
+                new java.util.ArrayList<>(window.view.cells);
+            window.clear();
+            add(marker).expandX().widget();
+            for (meteordevelopment.meteorclient.gui.utils.Cell<?> cell : cells) {
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                meteordevelopment.meteorclient.gui.utils.Cell raw = cell;
+                window.view.cells.add(raw);
+            }
+            window.invalidate();
+        }
+    }
+
     private void openModuleSettings(Module m) {
         BetterSearchModule cfg = config();
         boolean inline = cfg == null || cfg.inlineSettings.get();
@@ -371,7 +406,7 @@ public class BetterSearchTabScreen extends TabScreen {
         if (!inline) {
             UsageTracker.record(m);
             UsageTracker.save();
-            meteordevelopment.meteorclient.MeteorClient.mc.setScreen(theme.moduleScreen(m));
+            meteordevelopment.meteorclient.MeteorClient.mc.setScreen(new OutlinedModuleScreen(theme, m));
             return;
         }
         UsageTracker.record(m);
