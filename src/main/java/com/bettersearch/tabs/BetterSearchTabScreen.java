@@ -52,6 +52,9 @@ public class BetterSearchTabScreen extends TabScreen {
     /** Non-null while inline (locked) settings are open. */
     private Module inlineModule = null;
 
+    /** Dedicated holder for inline settings so Settings.tick() can only rebuild settings, never our view. */
+    private WVerticalList inlineSettingsHolder = null;
+
     /** Last right-clicked module — stays outlined in the list. */
     private Module outlinedModule = null;
 
@@ -126,7 +129,9 @@ public class BetterSearchTabScreen extends TabScreen {
         searchBox.minWidth = 480;
         searchBox.action = () -> {
             selected = 0;
-            refreshResults();
+            // Typing a new search while inline leaves the settings and filters the list
+            if (inlineModule != null) closeInline();
+            else refreshResults();
         };
 
         statusLabel = panel.add(theme.label("")).expandX().widget();
@@ -164,20 +169,9 @@ public class BetterSearchTabScreen extends TabScreen {
     private void refreshResults() {
         if (list == null || searchBox == null) return;
 
-        if (inlineModule != null) {
-            BetterSearchAddon.LOG.info("[BetterSearch] refresh WHILE inline open");
-            showInline();
-            return;
-        }
-
         BetterSearchModule cfg = config();
-        int max = cfg != null ? cfg.maxResults.get() : 100;
-        boolean desc = cfg == null || cfg.searchDescriptions.get();
-        boolean sett = cfg == null || cfg.searchSettings.get();
-        boolean tags = cfg == null || cfg.searchTags.get();
-        boolean learn = cfg == null || cfg.learnUsage.get();
 
-        // Customizable module/row sizes
+        // Customizable module/row sizes (also applied in inline mode so layout stays stable)
         int panelWidth = appearancePanelWidth(cfg);
         int rowGap = cfg != null ? cfg.rowGap.get() : 2;
         boolean showStatus = cfg == null || cfg.showStatus.get();
@@ -185,6 +179,17 @@ public class BetterSearchTabScreen extends TabScreen {
         searchBox.minWidth = Math.max(200, panelWidth - 20);
         list.spacing = rowGap;
         if (statusLabel != null) statusLabel.visible = showStatus;
+
+        if (inlineModule != null) {
+            showInline();
+            return;
+        }
+
+        int max = cfg != null ? cfg.maxResults.get() : 100;
+        boolean desc = cfg == null || cfg.searchDescriptions.get();
+        boolean sett = cfg == null || cfg.searchSettings.get();
+        boolean tags = cfg == null || cfg.searchTags.get();
+        boolean learn = cfg == null || cfg.learnUsage.get();
 
         String query = searchBox.get().trim();
         list.clear();
@@ -306,7 +311,6 @@ public class BetterSearchTabScreen extends TabScreen {
         // Outline the right-clicked module (toggleable via inline-outline)
         if ((cfg == null || cfg.inlineOutline.get()) && r.module() == outlinedModule) {
             card.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
-            BetterSearchAddon.LOG.info("[BetterSearch] outlining card for {}", r.module().name);
         }
         int uses = UsageTracker.getCount(r.module());
         boolean active = r.module().isActive();
@@ -417,29 +421,27 @@ public class BetterSearchTabScreen extends TabScreen {
 
     private void openInline(Module m) {
         inlineModule = m;
+        inlineSettingsHolder = null;
         BetterSearchAddon.LOG.info("[BetterSearch] inline OPEN for {}", m.name);
-        searchBox.visible = false;
-        if (statusLabel != null) statusLabel.visible = false;
         showInline();
     }
 
     private void closeInline() {
         BetterSearchAddon.LOG.info("[BetterSearch] inline CLOSE");
         inlineModule = null;
-        searchBox.visible = true;
-        BetterSearchModule cfg = config();
-        if (statusLabel != null) statusLabel.visible = cfg == null || cfg.showStatus.get();
+        inlineSettingsHolder = null;
         refreshResults();
         searchBox.setFocused(true);
-        try {
-            searchBox.setCursorMax();
-        } catch (Exception ignored) {}
     }
 
     private void showInline() {
         Module m = inlineModule;
         if (m == null) return;
         list.clear();
+
+        if (statusLabel != null) {
+            statusLabel.set("Settings: " + m.title + " — Left/Backspace for list, or type to search");
+        }
 
         WHorizontalList top = theme.horizontalList();
         top.spacing = 4;
@@ -482,15 +484,19 @@ public class BetterSearchTabScreen extends TabScreen {
         }
 
         list.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
-        list.add(theme.settings(m.settings)).expandX().widget();
+        // Dedicated holder: Settings.tick() clears + rebuilds its container on the first
+        // tick (visibility pass), so it must never be our shared list.
+        inlineSettingsHolder = theme.verticalList();
+        inlineSettingsHolder.add(theme.settings(m.settings)).expandX().widget();
+        list.add(inlineSettingsHolder).expandX().widget();
     }
 
     @Override
     public void tick() {
         super.tick();
-        if (inlineModule != null && list != null) {
+        if (inlineModule != null && inlineSettingsHolder != null) {
             try {
-                inlineModule.settings.tick(list, theme);
+                inlineModule.settings.tick(inlineSettingsHolder, theme);
             } catch (Exception ignored) {}
         }
     }
