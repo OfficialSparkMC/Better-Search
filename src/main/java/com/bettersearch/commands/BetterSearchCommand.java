@@ -1,21 +1,23 @@
 package com.bettersearch.commands;
 
-import com.bettersearch.gui.BetterSearchScreen;
+import com.bettersearch.tabs.BetterSearchTab;
 import com.bettersearch.modules.BetterSearchModule;
 import com.bettersearch.search.ModuleSearch;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import meteordevelopment.meteorclient.commands.Command;
 import meteordevelopment.meteorclient.gui.GuiThemes;
+import meteordevelopment.meteorclient.gui.tabs.Tab;
+import meteordevelopment.meteorclient.gui.tabs.Tabs;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import net.minecraft.command.CommandSource;
 
 import java.util.List;
 
 /**
- * {@code .better-search} — Wurst-style module finder in chat + GUI opener.
+ * {@code .better-search} — Wurst-style module finder in chat + tab opener.
  * <ul>
- *   <li>{@code .better-search} opens the Navigator GUI</li>
+ *   <li>{@code .better-search} opens the Search tab</li>
  *   <li>{@code .better-search <query>} lists matches in chat</li>
  *   <li>{@code .better-search toggle <query>} toggles the best match</li>
  * </ul>
@@ -29,7 +31,8 @@ public class BetterSearchCommand extends Command {
     @Override
     public void build(LiteralArgumentBuilder<CommandSource> builder) {
         builder.executes(context -> {
-            mc.setScreen(new BetterSearchScreen(GuiThemes.get()));
+            Tab tab = Tabs.get(BetterSearchTab.class);
+            if (tab != null) tab.openScreen(GuiThemes.get());
             return SINGLE_SUCCESS;
         });
 

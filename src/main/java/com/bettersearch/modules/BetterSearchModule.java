@@ -2,9 +2,11 @@ package com.bettersearch.modules;
 
 import com.bettersearch.BetterSearchAddon;
 import com.bettersearch.SearchTags;
-import com.bettersearch.gui.BetterSearchScreen;
+import com.bettersearch.tabs.BetterSearchTab;
 import com.bettersearch.search.UsageTracker;
 import meteordevelopment.meteorclient.gui.GuiThemes;
+import meteordevelopment.meteorclient.gui.tabs.Tab;
+import meteordevelopment.meteorclient.gui.tabs.Tabs;
 import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.IntSetting;
 import meteordevelopment.meteorclient.settings.Setting;
@@ -15,7 +17,8 @@ import static org.lwjgl.glfw.GLFW.GLFW_KEY_N;
 
 /**
  * Wurst-Navigator-style module search.
- * Press the bind (default N) to open the search GUI.
+ * Opens the separate "Search" tab in the Meteor menu (scrollable, clean UI).
+ * Press the bind (default N) to jump straight to it.
  * Left-click toggles, right-click opens settings,
  * Up/Down + Enter work from the keyboard.
  *
@@ -73,7 +76,9 @@ public class BetterSearchModule extends Module {
     @Override
     public void onActivate() {
         try {
-            mc.setScreen(new BetterSearchScreen(GuiThemes.get()));
+            Tab tab = Tabs.get(BetterSearchTab.class);
+            if (tab != null) tab.openScreen(GuiThemes.get());
+            else mc.setScreen(new com.bettersearch.tabs.BetterSearchTabScreen(GuiThemes.get(), new BetterSearchTab()));
         } finally {
             // Momentary button like Wurst Navigator: stay unbound-toggled
             if (isActive()) toggle();
