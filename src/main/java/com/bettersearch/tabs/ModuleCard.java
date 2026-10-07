@@ -140,11 +140,17 @@ public class ModuleCard extends WPressable {
         // Meteor only refreshes hover on mouse motion, so a rebuilt card under a
         // stationary cursor would eat clicks. Recompute for the click position.
         mouseOver = isOver(click.x(), click.y());
-        return super.mouseClicked(click, doubled);
+        boolean consumed = super.mouseClicked(click, doubled);
+        com.bettersearch.BetterSearchAddon.LOG.info(
+            "[BetterSearch] press module={} over={} consumed={} pressed={}",
+            result.module().name, mouseOver, consumed, pressed);
+        return consumed;
     }
 
     @Override
     protected void onPressed(int button) {
+        com.bettersearch.BetterSearchAddon.LOG.info(
+            "[BetterSearch] onPressed module={} button={}", result.module().name, button);
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             if (onToggle != null) onToggle.run();
         } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {

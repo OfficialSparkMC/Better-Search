@@ -733,9 +733,15 @@ public class BetterSearchTabScreen extends TabScreen {
 
     @Override
     public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
-        if (dragHandle != null && dragHandle.mouseOver && click.button() == GLFW_MOUSE_BUTTON_LEFT) {
-            draggingPanel = true;
-            return true;
+        // Fresh hit-test (scaled to widget units) instead of the possibly stale hover flag
+        if (dragHandle != null && click.button() == GLFW_MOUSE_BUTTON_LEFT) {
+            try {
+                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
+                if (dragHandle.isOver(click.x() * s, click.y() * s)) {
+                    draggingPanel = true;
+                    return true;
+                }
+            } catch (Exception ignored) {}
         }
         return super.mouseClicked(click, doubled);
     }
