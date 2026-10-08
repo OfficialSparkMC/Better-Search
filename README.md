@@ -45,6 +45,11 @@ Under ClickGUI → Better Search → `better-search`. The useful ones:
 For addon devs: annotate your modules with `@SearchTags({"alias", "synonym"})`
 from this mod and they'll show up under those words too.
 
+## How to use it
+- bind the Better-search to any key
+- press the key
+- Better-search will apper
+
 ## Build it yourself
 
 Needs Java 21.
