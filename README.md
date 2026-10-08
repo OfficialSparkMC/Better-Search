@@ -1,12 +1,11 @@
 # Better Search
 
 A Meteor Client addon (Minecraft 1.21.11) that adds a proper `Search` tab to the ClickGUI.
-Think Wurst's Navigator: one searchable list with every module, fuzzy matching,
-and your most-used stuff ranked first.
 
-Made by Turbo.
+![Quzr Addon Icon](src/main/resources/assets/Screenshots/BetterSearch.png)
+<br>
 
-## What it does
+## Features
 
 - Adds a **Search tab** next to Modules / Config / HUD in the Meteor menu.
 - Empty search shows **all modules grouped by category**. Typing filters the list
