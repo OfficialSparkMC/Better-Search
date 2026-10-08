@@ -117,6 +117,24 @@ public class BetterSearchModule extends Module {
         .build()
     );
 
+    public final Setting<Integer> cornerRadius = sgAppearance.add(new IntSetting.Builder()
+        .name("corner-radius")
+        .description("Corner radius of module cards and menu.")
+        .defaultValue(6)
+        .min(0)
+        .sliderMax(12)
+        .build()
+    );
+
+    public final Setting<Integer> cardPadding = sgAppearance.add(new IntSetting.Builder()
+        .name("card-padding")
+        .description("Inner padding of module cards (= module size).")
+        .defaultValue(2)
+        .min(0)
+        .sliderMax(8)
+        .build()
+    );
+
     public final Setting<Boolean> inlineSettings = sgAppearance.add(new BoolSetting.Builder()
         .name("inline-settings")
         .description("Open module settings INSIDE Better Search (locked, non-draggable). Off = classic draggable Meteor window.")

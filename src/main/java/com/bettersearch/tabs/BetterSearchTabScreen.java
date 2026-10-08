@@ -120,32 +120,6 @@ public class BetterSearchTabScreen extends TabScreen {
         }
     }
 
-    /**
-     * Row container: left click passes through to Meteor's module widget,
-     * right click opens our settings (inline locked or classic) and never
-     * reaches Meteor's own window. Stateless hit-test per event — nothing
-     * stored, nothing that can go stale.
-     */
-    private class WClickRow extends WHorizontalList {
-        Runnable onSettings;
-
-        WClickRow(GuiTheme theme) {
-            // Theme must be set BEFORE any child is added: WContainer.add stamps
-            // children with the parent's theme, so adding to a themeless row
-            // nulls their theme and crashes layout (WLabel NPE).
-            this.theme = theme;
-        }
-
-        @Override
-        public boolean mouseClicked(Click click, boolean doubled) {
-            if (click.button() == GLFW_MOUSE_BUTTON_RIGHT && isOver(click.x(), click.y())) {
-                if (onSettings != null) onSettings.run();
-                return true;
-            }
-            return super.mouseClicked(click, doubled);
-        }
-    }
-
     @Override
     public void initWidgets() {
         // Fixed modern panel: centered, customizable width, optionally draggable (no WWindow).
@@ -379,13 +353,19 @@ public class BetterSearchTabScreen extends TabScreen {
         }
     }
 
-    private WClickRow makeRow(ModuleSearch.Result r, int flatIndex, boolean showCategory, boolean forceMark) {
+    private CardBack makeRow(ModuleSearch.Result r, int flatIndex, boolean showCategory, boolean forceMark) {
         BetterSearchModule cfg = config();
-        WClickRow row = new WClickRow(theme);
+        CardBack card = new CardBack(theme);
+        card.selected = flatIndex == selected;
+        card.outlined = forceMark || (r.module() == outlinedModule && (cfg == null || cfg.inlineOutline.get()));
+        card.radius = cfg != null ? cfg.cornerRadius.get() : 6;
+        card.pad = cfg != null ? cfg.cardPadding.get() : 2;
+
+        WHorizontalList row = theme.horizontalList();
         row.spacing = cfg != null ? cfg.rowInnerGap.get() : 4;
 
         boolean isSel = flatIndex == selected;
-        boolean isOut = forceMark || (r.module() == outlinedModule && (cfg == null || cfg.inlineOutline.get()));
+        boolean isOut = card.outlined;
         WLabel mark = row.add(theme.label(isOut ? "*" : (isSel ? ">" : " "))).widget();
         try {
             mark.color(isOut ? Color.YELLOW : (isSel ? theme.textColor() : theme.textSecondaryColor()));
@@ -409,8 +389,9 @@ public class BetterSearchTabScreen extends TabScreen {
             } catch (Exception ignored) {}
         }
 
-        row.onSettings = () -> openModuleSettings(r.module());
-        return row;
+        card.add(row).expandX().widget();
+        card.onSettings = () -> openModuleSettings(r.module());
+        return card;
     }
 
     /** Instant visible feedback for a toggle (proves the click landed). */
@@ -437,8 +418,7 @@ public class BetterSearchTabScreen extends TabScreen {
             for (int j = 0; j < columns && i + j < results.size(); j++) {
                 ModuleSearch.Result r = results.get(i + j);
                 // Compact grid cells: no meta text (tooltip carries details)
-                WClickRow cell = makeRow(r, baseIndex + i + j, false, false);
-                row.add(cell).expandX().widget();
+                row.add(makeRow(r, baseIndex + i + j, false, false)).expandX().widget();
             }
 
             list.add(row).expandX().widget();
@@ -490,6 +470,13 @@ public class BetterSearchTabScreen extends TabScreen {
             statusLabel.set("Settings: " + m.title + " — Left/Backspace for list, or type to search");
         }
 
+        BetterSearchModule cfg = config();
+        CardBack menu = new CardBack(theme);
+        menu.radius = cfg != null ? cfg.cornerRadius.get() : 6;
+        menu.pad = cfg != null ? cfg.cardPadding.get() + 2 : 4;
+        menu.spacing = 4;
+        list.add(menu).expandX().widget();
+
         WHorizontalList top = theme.horizontalList();
         top.spacing = 4;
         WButton back = theme.button("Back");
@@ -505,26 +492,26 @@ public class BetterSearchTabScreen extends TabScreen {
             }
         };
         top.add(inlineActiveBox).right().widget();
-        list.add(top).expandX().widget();
+        menu.add(top).expandX().widget();
 
-        WLabel desc = list.add(theme.label(m.description)).expandX().widget();
+        WLabel desc = menu.add(theme.label(m.description)).expandX().widget();
         try {
             desc.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
 
         // Context row for the right-clicked module, always marked.
-        list.add(makeRow(new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m)), -1, true, true)).expandX().widget();
+        menu.add(makeRow(new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m)), -1, true, true)).expandX().widget();
 
-        list.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
+        menu.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
         // Dedicated holder: Settings.tick() clears + rebuilds its container on the first
         // tick (visibility pass), so it must never be our shared list.
         inlineSettingsHolder = theme.verticalList();
         inlineSettingsHolder.add(theme.settings(m.settings)).expandX().widget();
-        list.add(inlineSettingsHolder).expandX().widget();
+        menu.add(inlineSettingsHolder).expandX().widget();
 
         // Bind section (mirrors Meteor's module screen so binds can be edited inline).
         WSection bindSection = theme.section("Bind", true);
-        list.add(bindSection).expandX().widget();
+        menu.add(bindSection).expandX().widget();
 
         WHorizontalList bind = bindSection.add(theme.horizontalList()).expandX().widget();
         bind.add(theme.label("Bind: "));
