@@ -18,7 +18,7 @@ public class BetterSearchAddon extends MeteorAddon {
 
     @Override
     public void onInitialize() {
-        LOG.info("Initializing Better Search addon by OfficialSparkMC");
+        LOG.info("Initializing Better Search addon by Turbo");
 
         Tabs.add(new BetterSearchTab());
         Modules.get().add(new BetterSearchModule());

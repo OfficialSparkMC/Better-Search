@@ -21,7 +21,7 @@ import java.util.List;
  *   <li>{@code .better-search <query>} lists matches in chat</li>
  *   <li>{@code .better-search toggle <query>} toggles the best match</li>
  * </ul>
- * Credits: OfficialSparkMC.
+ * Credits: Turbo.
  */
 public class BetterSearchCommand extends Command {
     public BetterSearchCommand() {

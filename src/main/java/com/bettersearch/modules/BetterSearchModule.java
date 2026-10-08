@@ -22,7 +22,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_CONTROL;
  * Left-click toggles, right-click opens settings,
  * Up/Down + Enter work from the keyboard.
  *
- * <p>Uses Meteor's shared GUI renderer (theme widgets) for a fancy themed UI. Credits: OfficialSparkMC</p>
+ * <p>Uses Meteor's shared GUI renderer (theme widgets) for a fancy themed UI. Credits: Turbo</p>
  */
 @SearchTags({"navigator", "find", "lookup", "wurst", "search gui", "module finder"})
 public class BetterSearchModule extends Module {

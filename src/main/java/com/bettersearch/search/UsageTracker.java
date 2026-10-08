@@ -15,7 +15,7 @@ import java.util.Map;
  * is toggled/opened and boosts frequently used modules in search results.
  * Persisted to {@code meteor-client/better-search-usage.json} (minimal JSON, no extra deps).
  *
- * <p>Credits: OfficialSparkMC</p>
+ * <p>Credits: Turbo</p>
  */
 public final class UsageTracker {
     private static final Map<String, Integer> COUNTS = new HashMap<>();
@@ -52,7 +52,7 @@ public final class UsageTracker {
                 }
             }
         } catch (Exception e) {
-            BetterSearchAddon.LOG.warn("Better Search (by OfficialSparkMC): failed to load usage file", e);
+            BetterSearchAddon.LOG.warn("Better Search (by Turbo): failed to load usage file", e);
         }
     }
 
@@ -70,7 +70,7 @@ public final class UsageTracker {
             sb.append("}");
             Files.writeString(f.toPath(), sb.toString());
         } catch (Exception e) {
-            BetterSearchAddon.LOG.warn("Better Search (by OfficialSparkMC): failed to save usage file", e);
+            BetterSearchAddon.LOG.warn("Better Search (by Turbo): failed to save usage file", e);
         }
     }
 

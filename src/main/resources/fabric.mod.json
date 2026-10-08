@@ -5,10 +5,10 @@
   "name": "Better Search",
   "description": "Wurst-like Navigator search for Meteor modules: fuzzy search, synonyms, usage learning, keyboard navigation.",
   "authors": [
-    "OfficialSparkMC"
+    "turbo"
   ],
   "contact": {
-    "sources": "https://github.com/OfficialSparkMC/better-search"
+    "sources": "https://github.com/turbo/better-search"
   },
   "icon": "assets/better-search/icon.png",
   "environment": "client",

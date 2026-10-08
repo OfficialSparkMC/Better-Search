@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  * public class FastBreak extends Module { ... }
  * </pre>
  *
- * @author OfficialSparkMC
+ * @author Turbo
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

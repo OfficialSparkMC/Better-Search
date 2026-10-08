@@ -15,7 +15,7 @@ import java.util.Locale;
  * </ol>
  * Returns {@link Integer#MAX_VALUE} when there is no match.
  *
- * @author OfficialSparkMC
+ * @author Turbo
  */
 public final class FuzzyMatcher {
     private FuzzyMatcher() {}
