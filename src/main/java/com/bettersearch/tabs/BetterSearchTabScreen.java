@@ -126,7 +126,8 @@ public class BetterSearchTabScreen extends TabScreen {
         panel = new WDragPanel();
         panel.theme = theme;
         panel.spacing = 6;
-        add(panel).centerX().marginTop(46).widget();
+        // Pin to the top under the Meteor top bar (add() defaults to vertical center).
+        add(panel).centerX().top().marginTop(46).widget();
         panel.minWidth = 500;
         panel.dragX = savedDragX;
         panel.dragY = savedDragY;
