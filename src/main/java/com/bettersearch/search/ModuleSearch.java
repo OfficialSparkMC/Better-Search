@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Perf: per-module searchable strings are cached (lowercased once);
  * excellent name/title hits skip the expensive description/settings pass.</p>
  *
- * <p>Credits: Turbo</p>
+ * <p>Credits: OfficialSparkMC</p>
  */
 public final class ModuleSearch {
     private ModuleSearch() {}

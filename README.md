@@ -4,7 +4,7 @@ A Meteor Client addon (Minecraft 1.21.11) that adds a proper `Search` tab to the
 Think Wurst's Navigator: one searchable list with every module, fuzzy matching,
 and your most-used stuff ranked first.
 
-Made by Turbo.
+Made by OfficialSparkMC.
 
 ## What it does
 

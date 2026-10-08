@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Learns preferences Wurst-style: every module toggle is counted,
  * so frequently used modules rank higher in Better Search.
- * Credits: Turbo.
+ * Credits: OfficialSparkMC.
  */
 @Mixin(Module.class)
 public abstract class ModuleToggleMixin {
