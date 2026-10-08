@@ -138,7 +138,8 @@ public class ModuleCard extends WPressable {
     /**
      * Filled rounded rectangle with ZERO overlapping pieces (no double-blended
      * stripes or visible disc edges with translucent colors): center + 4 edge
-     * bars + 4 corner discs. Every pixel is painted exactly once.
+     * bars inset past the corner discs + 4 corner discs. Every pixel is painted
+     * exactly once; bars start where the discs end (2*rad), not at rad.
      */
     static void rounded(GuiRenderer r, double x, double y, double w, double h, double rad, Color c) {
         if (w <= 0 || h <= 0) return;
@@ -148,13 +149,17 @@ public class ModuleCard extends WPressable {
             return;
         }
         double d = rad * 2;
-        // Center (largest, no overlap with anything below)
+        if (w < d * 2 || h < d * 2) {
+            r.quad(x, y, w, h, c);
+            return;
+        }
+        // Center
         r.quad(x + rad, y + rad, w - d, h - d, c);
-        // Edge bars between the corner squares (disjoint from center and each other)
-        r.quad(x + rad, y, w - d, rad, c); // top
-        r.quad(x + rad, y + h - rad, w - d, rad, c); // bottom
-        r.quad(x, y + rad, rad, h - d, c); // left
-        r.quad(x + w - rad, y + rad, rad, h - d, c); // right
+        // Edge bars strictly between the corner discs (disjoint from discs and center)
+        r.quad(x + d, y, w - d * 2, rad, c); // top
+        r.quad(x + d, y + h - rad, w - d * 2, rad, c); // bottom
+        r.quad(x, y + d, rad, h - d * 2, c); // left
+        r.quad(x + w - rad, y + d, rad, h - d * 2, c); // right
         // Corner discs fill exactly their squares
         r.quad(x, y, d, d, GuiRenderer.CIRCLE, c);
         r.quad(x + w - d, y, d, d, GuiRenderer.CIRCLE, c);
