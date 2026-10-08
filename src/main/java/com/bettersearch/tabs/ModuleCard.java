@@ -111,8 +111,9 @@ public class ModuleCard extends WPressable {
         double cx = x + pad;
 
         if (showDot) {
+            // Dot shows only ON/OFF state; selection is shown by the highlighted background.
             boolean active = result.module().isActive();
-            Color dotColor = selected ? Color.YELLOW : (active ? Color.GREEN : Color.GRAY);
+            Color dotColor = active ? Color.GREEN : Color.GRAY;
             double ds = dotSize;
             renderer.quad(cx, cy - ds / 2, ds, ds, GuiRenderer.CIRCLE, dotColor);
             cx += ds + theme.scale(4);
