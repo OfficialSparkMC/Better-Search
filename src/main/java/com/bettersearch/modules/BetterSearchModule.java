@@ -129,7 +129,7 @@ public class BetterSearchModule extends Module {
     public final Setting<Integer> cornerRadius = sgAppearance.add(new IntSetting.Builder()
         .name("corner-radius")
         .description("Corner radius of module cards.")
-        .defaultValue(6)
+        .defaultValue(10)
         .min(0)
         .sliderMax(12)
         .build()
