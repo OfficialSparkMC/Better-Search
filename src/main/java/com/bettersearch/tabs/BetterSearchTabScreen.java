@@ -403,6 +403,7 @@ public class BetterSearchTabScreen extends TabScreen {
             UsageTracker.save();
             card.tooltip = cardTooltip(r);
             card.invalidate();
+            flashToggled(r.module());
         };
         card.onSettings = () -> openModuleSettings(r.module());
         cardMap.put(r.module(), card);
@@ -417,6 +418,13 @@ public class BetterSearchTabScreen extends TabScreen {
             + "\n" + r.module().description
             + (uses > 0 ? "\nUsed " + uses + "x" : "")
             + "\nLeft-click toggle • Right-click settings";
+    }
+
+    /** Instant visible feedback for a toggle (proves the click landed). */
+    void flashToggled(Module m) {
+        if (statusLabel != null) {
+            statusLabel.set("Toggled " + m.title + " " + (m.isActive() ? "ON" : "OFF"));
+        }
     }
 
     /** Clicked card takes over keyboard selection so yellow always marks last interaction. */
@@ -698,6 +706,7 @@ public class BetterSearchTabScreen extends TabScreen {
         if (card != null) {
             card.tooltip = cardTooltip(r);
             card.invalidate();
+            flashToggled(r.module());
         } else {
             refreshResults();
         }
