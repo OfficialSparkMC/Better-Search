@@ -7,9 +7,9 @@ import com.bettersearch.search.UsageTracker;
 import meteordevelopment.meteorclient.events.meteor.ActiveModulesChangedEvent;
 import meteordevelopment.meteorclient.events.meteor.ModuleBindChangedEvent;
 import meteordevelopment.meteorclient.gui.GuiTheme;
+import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.tabs.Tab;
 import meteordevelopment.meteorclient.gui.tabs.TabScreen;
-import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.gui.widgets.WKeybind;
@@ -24,7 +24,9 @@ import meteordevelopment.meteorclient.systems.config.Config;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.orbit.EventHandler;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.input.KeyInput;
 
 import java.util.ArrayList;
@@ -35,14 +37,13 @@ import static org.lwjgl.glfw.GLFW.*;
 
 /**
  * Modern, clean, fixed (non-draggable) Navigator tab, Wurst-style.
- * Rounded module cards rendered with Meteor's shared GuiRenderer.
- * Search bar fixed on top, scrollable result list below.
- * Empty query shows FULL module list grouped by category; typing filters
+ * Rows are built from Meteor's own proven widgets (native look, native clicks,
+ * active styling included) — no custom rendering and no custom click state,
+ * so there is nothing that can desync, go stale, or draw artifacts.
+ * Empty query shows the FULL module list grouped by category; typing filters
  * to a flat ranked list. Left-click toggles, right-click opens settings
  * inline (locked) or classic draggable window (toggleable).
  * Keyboard: Up/Down + Enter + Right. Opens with Right-Ctrl.
- *
- * <p>Credits: Turbo</p>
  */
 public class BetterSearchTabScreen extends TabScreen {
     private WTextBox searchBox;
@@ -55,14 +56,14 @@ public class BetterSearchTabScreen extends TabScreen {
     private List<ModuleSearch.Result> current = List.of();
     private int selected = 0;
 
-    /** Live card widgets by module for in-place updates (no rebuild on toggle). */
-    private final java.util.Map<Module, ModuleCard> cardMap = new java.util.HashMap<>();
+    /** Non-null while inline (locked) settings are open. */
+    private Module inlineModule = null;
+
+    /** Last right-clicked module — marked in the list. */
+    private Module outlinedModule = null;
 
     /** Last query that was fully sorted; same-query rebuilds keep order stable. */
     private String lastQuery = null;
-
-    /** Non-null while inline (locked) settings are open. */
-    private Module inlineModule = null;
 
     /** Dedicated holder for inline settings so Settings.tick() can only rebuild settings, never our view. */
     private WVerticalList inlineSettingsHolder = null;
@@ -70,9 +71,6 @@ public class BetterSearchTabScreen extends TabScreen {
     /** Inline bind editor + active box, kept live via Meteor's change events (like its own screen). */
     private WKeybind inlineKeybind = null;
     private WCheckbox inlineActiveBox = null;
-
-    /** Last right-clicked module — stays outlined in the list. */
-    private Module outlinedModule = null;
 
     /** Session-persistent drag offset for the panel. */
     private static double savedDragX = 0;
@@ -98,7 +96,7 @@ public class BetterSearchTabScreen extends TabScreen {
         }
     }
 
-    /** Thin drag handle shown only when draggable-panel is on (visual only, drag handled by screen). */
+    /** Thin drag handle shown only when draggable-panel is on. */
     private WDragHandle dragHandle = null;
     private boolean draggingPanel = false;
     private double lastMoveX, lastMoveY;
@@ -115,15 +113,28 @@ public class BetterSearchTabScreen extends TabScreen {
 
         @Override
         protected void onRender(meteordevelopment.meteorclient.gui.renderer.GuiRenderer renderer, double mouseX, double mouseY, double delta) {
-            String s = mouseOver ? "⠿ Better Search — dragging" : "⠿ Better Search — drag me";
+            String s = mouseOver ? "Better Search — dragging" : "Better Search — drag me";
             double tw = theme.textWidth(s);
             renderer.text(s, x + width / 2 - tw / 2, y + theme.scale(5),
                 mouseOver ? theme.textColor() : theme.textSecondaryColor(), false);
         }
+    }
+
+    /**
+     * Row container: left click passes through to Meteor's module widget,
+     * right click opens our settings (inline locked or classic) and never
+     * reaches Meteor's own window. Stateless hit-test per event — nothing
+     * stored, nothing that can go stale.
+     */
+    private class WClickRow extends WHorizontalList {
+        Runnable onSettings;
 
         @Override
-        public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
-            mouseOver = isOver(click.x(), click.y());
+        public boolean mouseClicked(Click click, boolean doubled) {
+            if (click.button() == GLFW_MOUSE_BUTTON_RIGHT && isOver(click.x(), click.y())) {
+                if (onSettings != null) onSettings.run();
+                return true;
+            }
             return super.mouseClicked(click, doubled);
         }
     }
@@ -193,7 +204,7 @@ public class BetterSearchTabScreen extends TabScreen {
 
         BetterSearchModule cfg = config();
 
-        // Customizable module/row sizes (also applied in inline mode so layout stays stable)
+        // Customizable sizes (also applied in inline mode so layout stays stable)
         int panelWidth = appearancePanelWidth(cfg);
         int rowGap = cfg != null ? cfg.rowGap.get() : 2;
         boolean showStatus = cfg == null || cfg.showStatus.get();
@@ -225,12 +236,11 @@ public class BetterSearchTabScreen extends TabScreen {
         lastQuery = query;
 
         list.clear();
-        cardMap.clear();
 
         if (query.isEmpty()) {
-            refreshGrouped(learn, sameQuery ? prevOrder : null);
+            refreshGrouped(learn, prevOrder);
         } else {
-            refreshFiltered(query, max, desc, sett, tags, learn, sameQuery ? prevOrder : null);
+            refreshFiltered(query, max, desc, sett, tags, learn, prevOrder);
         }
 
         if (selected >= current.size()) selected = Math.max(0, current.size() - 1);
@@ -246,24 +256,8 @@ public class BetterSearchTabScreen extends TabScreen {
         }
 
         // Cursor first: keep the text caret in the search box after every rebuild
-        // (mouse clicks on cards would otherwise leave focus nowhere)
         // Harmless when already focused — does not move the caret.
         searchBox.setFocused(true);
-
-        // Rebuilds create brand-new card widgets. Their bounds are only computed
-        // on the next render, so refresh hover after that (same pattern Meteor
-        // uses itself) — clicks then work without moving the mouse first.
-        taskAfterRender = () -> refreshHover();
-    }
-
-    private void refreshHover() {
-        try {
-            var mc = meteordevelopment.meteorclient.MeteorClient.mc;
-            double s = mc.getWindow().getScaleFactor();
-            double mx = mc.mouse.getX() * s;
-            double my = mc.mouse.getY() * s;
-            if (list != null) list.mouseMoved(mx, my, mx, my);
-        } catch (Exception ignored) {}
     }
 
     /** Empty query: FULL module list grouped by category (Wurst shows everything with category). */
@@ -292,7 +286,7 @@ public class BetterSearchTabScreen extends TabScreen {
                     .thenComparing(m -> m.title, String.CASE_INSENSITIVE_ORDER));
             }
 
-            // Modern category header
+            // Category header
             WLabel header = list.add(theme.label(category.name, true)).expandX().widget();
             try {
                 header.color(theme.textSecondaryColor());
@@ -376,49 +370,38 @@ public class BetterSearchTabScreen extends TabScreen {
         }
     }
 
-    private ModuleCard makeCard(ModuleSearch.Result r, int flatIndex, boolean showCategory, boolean showMeta) {
+    private WClickRow makeRow(ModuleSearch.Result r, int flatIndex, boolean showCategory, boolean forceMark) {
         BetterSearchModule cfg = config();
-        ModuleCard card = new ModuleCard(r);
-        card.screen = this;
-        card.flatIndex = flatIndex;
-        card.selected = flatIndex == selected;
-        card.rounded = cfg == null || cfg.roundedCards.get();
-        card.radius = cfg != null ? cfg.cornerRadius.get() : 6;
-        card.padExtra = cfg != null ? cfg.cardPadding.get() : 2;
-        card.showDot = cfg == null || cfg.showDot.get();
-        card.showMeta = showMeta;
-        card.showCategory = showCategory && (cfg == null || cfg.showCategory.get());
-        card.largeTitle = cfg != null && cfg.largeTitles.get();
-        // Outline the right-clicked module (toggleable via inline-outline)
-        if ((cfg == null || cfg.inlineOutline.get()) && r.module() == outlinedModule) {
-            card.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
-        }
-        card.tooltip = cardTooltip(r);
-        card.onToggle = () -> {
-            // Clicked card becomes the keyboard selection too (yellow follows the mouse).
-            selectCard(flatIndex);
-            // In-place update: no list rebuild, so nothing moves, scroll and
-            // selection stay exactly where they are.
-            r.module().toggle();
-            UsageTracker.record(r.module());
-            UsageTracker.save();
-            card.tooltip = cardTooltip(r);
-            card.invalidate();
-            flashToggled(r.module());
-        };
-        card.onSettings = () -> openModuleSettings(r.module());
-        cardMap.put(r.module(), card);
-        return card;
-    }
+        WClickRow row = new WClickRow();
+        row.spacing = cfg != null ? cfg.rowInnerGap.get() : 4;
 
-    private String cardTooltip(ModuleSearch.Result r) {
+        boolean isSel = flatIndex == selected;
+        boolean isOut = forceMark || (r.module() == outlinedModule && (cfg == null || cfg.inlineOutline.get()));
+        WLabel mark = row.add(theme.label(isOut ? "*" : (isSel ? ">" : " "))).widget();
+        try {
+            mark.color(isOut ? Color.YELLOW : (isSel ? theme.textColor() : theme.textSecondaryColor()));
+        } catch (Exception ignored) {}
+
+        // Meteor's own module widget: native look, native clicks, live active styling
+        WWidget modWidget = theme.module(r.module());
         int uses = UsageTracker.getCount(r.module());
         String state = r.module().isActive() ? "ON" : "OFF";
-        return r.matchedText()
+        modWidget.tooltip = r.matchedText()
             + "  [" + r.module().category.name + "]  (" + state + ")"
             + "\n" + r.module().description
             + (uses > 0 ? "\nUsed " + uses + "x" : "")
             + "\nLeft-click toggle • Right-click settings";
+        row.add(modWidget).expandX();
+
+        if (showCategory && (cfg == null || cfg.showCategory.get())) {
+            WLabel cat = row.add(theme.label(r.module().category.name)).right().widget();
+            try {
+                cat.color(isSel ? theme.textColor() : theme.textSecondaryColor());
+            } catch (Exception ignored) {}
+        }
+
+        row.onSettings = () -> openModuleSettings(r.module());
+        return row;
     }
 
     /** Instant visible feedback for a toggle (proves the click landed). */
@@ -428,28 +411,8 @@ public class BetterSearchTabScreen extends TabScreen {
         }
     }
 
-    /** Clicked card takes over keyboard selection so yellow always marks last interaction. */
-    void selectCard(int flatIndex) {
-        if (flatIndex < 0 || flatIndex >= current.size()) return;
-        selected = flatIndex;
-        for (ModuleCard c : cardMap.values()) {
-            boolean should = c.flatIndex == flatIndex;
-            if (c.selected != should) {
-                c.selected = should;
-                c.invalidate();
-            }
-        }
-        if (statusLabel != null && !current.isEmpty()) {
-            String q = searchBox != null ? searchBox.get().trim() : "";
-            if (!q.isEmpty()) {
-                ModuleSearch.Result best = current.get(Math.min(selected, current.size() - 1));
-                statusLabel.set(current.size() + " results • selected: " + best.module().title + " (Enter toggle, Right settings)");
-            }
-        }
-    }
-
     private void addRow(ModuleSearch.Result r, int index, boolean showCategory) {
-        list.add(makeCard(r, index, showCategory, true)).expandX().widget();
+        list.add(makeRow(r, index, showCategory, false)).expandX().widget();
     }
 
     /** Multiple modules per line: grid rows with N compact cards each. */
@@ -464,8 +427,9 @@ public class BetterSearchTabScreen extends TabScreen {
 
             for (int j = 0; j < columns && i + j < results.size(); j++) {
                 ModuleSearch.Result r = results.get(i + j);
-                // Compact grid cards: no meta text (tooltip carries details)
-                row.add(makeCard(r, baseIndex + i + j, false, false)).expandX().widget();
+                // Compact grid cells: no meta text (tooltip carries details)
+                WClickRow cell = makeRow(r, baseIndex + i + j, false, false);
+                row.add(cell).expandX().widget();
             }
 
             list.add(row).expandX().widget();
@@ -473,68 +437,6 @@ public class BetterSearchTabScreen extends TabScreen {
     }
 
     // Inline (locked, non-draggable) settings
-
-    /**
-     * Classic draggable Meteor window + a yellow marker on top identifying the
-     * module picked from Better Search. Used when inline-settings is OFF
-     * (Meteor's own window has no outline API, so we mark it instead).
-     */
-    public static class OutlinedModuleScreen extends meteordevelopment.meteorclient.gui.screens.ModuleScreen {
-        private final Module mod;
-
-        public OutlinedModuleScreen(GuiTheme theme, Module module) {
-            super(theme, module);
-            this.mod = module;
-        }
-
-        @Override
-        public void render(net.minecraft.client.gui.DrawContext context, int mouseX, int mouseY, float delta) {
-            super.render(context, mouseX, mouseY, delta);
-            // Yellow outline around Meteor's outer window.
-            // Widget coords are raw pixels; DrawContext works in scaled units.
-            try {
-                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
-                int pad = 3;
-                int x = (int) Math.floor(window.x / s) - pad;
-                int y = (int) Math.floor(window.y / s) - pad;
-                int w = (int) Math.ceil(window.width / s) + pad * 2;
-                int h = (int) Math.ceil(window.height / s) + pad * 2;
-                int yellow = 0xFFFFFF00;
-                int t = 2;
-                // Outer 2px ring
-                context.fill(x - 2, y - 2, x + w + 2, y, yellow);
-                context.fill(x - 2, y + h, x + w + 2, y + h + 2, yellow);
-                context.fill(x - 2, y, x, y + h, yellow);
-                context.fill(x + w, y, x + w + 2, y + h, yellow);
-                // Inner 2px ring
-                context.fill(x, y, x + w, y + t, yellow);
-                context.fill(x, y + h - t, x + w, y + h, yellow);
-                context.fill(x, y, x + t, y + h, yellow);
-                context.fill(x + w - t, y, x + w, y + h, yellow);
-            } catch (Exception ignored) {}
-        }
-
-        @Override
-        public void initWidgets() {
-            super.initWidgets();
-            // Prepend marker so it sits at the very top without disturbing Meteor's layout.
-            // (Content cells live in window.view, not window itself.)
-            WLabel marker = theme.label("◉ " + mod.title + " — from Better Search");
-            try {
-                marker.color(meteordevelopment.meteorclient.utils.render.color.Color.YELLOW);
-            } catch (Exception ignored) {}
-            java.util.List<meteordevelopment.meteorclient.gui.utils.Cell<?>> cells =
-                new java.util.ArrayList<>(window.view.cells);
-            window.clear();
-            add(marker).expandX().widget();
-            for (meteordevelopment.meteorclient.gui.utils.Cell<?> cell : cells) {
-                @SuppressWarnings({"unchecked", "rawtypes"})
-                meteordevelopment.meteorclient.gui.utils.Cell raw = cell;
-                window.view.cells.add(raw);
-            }
-            window.invalidate();
-        }
-    }
 
     private void openModuleSettings(Module m) {
         BetterSearchModule cfg = config();
@@ -574,23 +476,10 @@ public class BetterSearchTabScreen extends TabScreen {
         Module m = inlineModule;
         if (m == null) return;
         list.clear();
-        cardMap.clear();
 
         if (statusLabel != null) {
             statusLabel.set("Settings: " + m.title + " — Left/Backspace for list, or type to search");
         }
-
-        BetterSearchModule cfg = config();
-        MenuPanel menu = new MenuPanel();
-        menu.spacing = 4;
-        menu.drawBg = cfg == null || cfg.menuBackground.get();
-        try {
-            menu.bg = new meteordevelopment.meteorclient.utils.render.color.Color(cfg != null ? cfg.menuBgColor.get() : new meteordevelopment.meteorclient.utils.render.color.SettingColor(12, 12, 18, 210));
-        } catch (Exception ignored) {}
-        menu.outline = cfg == null || cfg.menuOutline.get();
-        menu.radius = cfg != null ? cfg.menuCornerRadius.get() : 8;
-        menu.pad = cfg != null ? cfg.menuPadding.get() : 6;
-        list.add(menu).expandX().widget();
 
         WHorizontalList top = theme.horizontalList();
         top.spacing = 4;
@@ -607,41 +496,26 @@ public class BetterSearchTabScreen extends TabScreen {
             }
         };
         top.add(inlineActiveBox).right().widget();
-        menu.add(top).expandX().widget();
+        list.add(top).expandX().widget();
 
-        WLabel desc = menu.add(theme.label(m.description)).expandX().widget();
+        WLabel desc = list.add(theme.label(m.description)).expandX().widget();
         try {
             desc.color(theme.textSecondaryColor());
         } catch (Exception ignored) {}
 
-        // Context card for the right-clicked module.
-        // ALWAYS outlined + tinted (no toggle) so the open menu visibly marks its module.
-        {
-            ModuleSearch.Result r = new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m));
-            ModuleCard context = makeCard(r, -1, true, true);
-            context.selected = false;
-            context.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;
-            context.onToggle = () -> {
-                m.toggle();
-                UsageTracker.record(m);
-                UsageTracker.save();
-                showInline();
-            };
-            context.onSettings = () -> {};
-            menu.add(context).expandX().widget();
-            BetterSearchAddon.LOG.info("[BetterSearch] inline SHOW menu for {} (outlined context card added)", m.name);
-        }
+        // Context row for the right-clicked module, always marked.
+        list.add(makeRow(new ModuleSearch.Result(m, m.title, 0, UsageTracker.getCount(m)), -1, true, true)).expandX().widget();
 
-        menu.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
+        list.add(theme.label("Locked in Better Search (non-draggable)")).expandX().widget();
         // Dedicated holder: Settings.tick() clears + rebuilds its container on the first
         // tick (visibility pass), so it must never be our shared list.
         inlineSettingsHolder = theme.verticalList();
         inlineSettingsHolder.add(theme.settings(m.settings)).expandX().widget();
-        menu.add(inlineSettingsHolder).expandX().widget();
+        list.add(inlineSettingsHolder).expandX().widget();
 
         // Bind section (mirrors Meteor's module screen so binds can be edited inline).
         WSection bindSection = theme.section("Bind", true);
-        menu.add(bindSection).expandX().widget();
+        list.add(bindSection).expandX().widget();
 
         WHorizontalList bind = bindSection.add(theme.horizontalList()).expandX().widget();
         bind.add(theme.label("Bind: "));
@@ -661,17 +535,7 @@ public class BetterSearchTabScreen extends TabScreen {
         WCheckbox cfC = cf.add(theme.checkbox(m.chatFeedback)).widget();
         cfC.action = () -> m.chatFeedback = cfC.checked;
 
-        taskAfterRender = () -> refreshHover();
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-        if (inlineModule != null && inlineSettingsHolder != null) {
-            try {
-                inlineModule.settings.tick(inlineSettingsHolder, theme);
-            } catch (Exception ignored) {}
-        }
+        BetterSearchAddon.LOG.info("[BetterSearch] inline SHOW menu for {}", m.name);
     }
 
     // Same live refresh Meteor's own module screen does: the bind value is set
@@ -690,6 +554,16 @@ public class BetterSearchTabScreen extends TabScreen {
         }
     }
 
+    @Override
+    public void tick() {
+        super.tick();
+        if (inlineModule != null && inlineSettingsHolder != null) {
+            try {
+                inlineModule.settings.tick(inlineSettingsHolder, theme);
+            } catch (Exception ignored) {}
+        }
+    }
+
     private void moveSelection(int delta) {
         if (inlineModule != null || current.isEmpty()) return;
         selected = Math.floorMod(selected + delta, current.size());
@@ -702,15 +576,7 @@ public class BetterSearchTabScreen extends TabScreen {
         r.module().toggle();
         UsageTracker.record(r.module());
         UsageTracker.save();
-        // In-place like mouse toggles: no rebuild, selection and scroll stay put
-        ModuleCard card = cardMap.get(r.module());
-        if (card != null) {
-            card.tooltip = cardTooltip(r);
-            card.invalidate();
-            flashToggled(r.module());
-        } else {
-            refreshResults();
-        }
+        flashToggled(r.module());
     }
 
     private void openSelectedSettings() {
@@ -767,22 +633,26 @@ public class BetterSearchTabScreen extends TabScreen {
     // Screen-level panel dragging (robust: direct move, no relayout fight)
 
     @Override
-    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
-        // Fresh hit-test (scaled to widget units) instead of the possibly stale hover flag
-        if (dragHandle != null && click.button() == GLFW_MOUSE_BUTTON_LEFT) {
+    public boolean mouseClicked(Click click, boolean doubled) {
+        if (dragHandle != null) {
             try {
                 double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
-                if (dragHandle.isOver(click.x() * s, click.y() * s)) {
+                if (click.button() == GLFW_MOUSE_BUTTON_LEFT && dragHandle.isOver(click.x() * s, click.y() * s)) {
                     draggingPanel = true;
                     return true;
                 }
             } catch (Exception ignored) {}
         }
+        // Fresh hover for the whole panel so stationary clicks hit rebuilt widgets
+        try {
+            double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
+            if (panel != null) panel.mouseMoved(click.x() * s, click.y() * s, click.x() * s, click.y() * s);
+        } catch (Exception ignored) {}
         return super.mouseClicked(click, doubled);
     }
 
     @Override
-    public boolean mouseReleased(net.minecraft.client.gui.Click click) {
+    public boolean mouseReleased(Click click) {
         draggingPanel = false;
         return super.mouseReleased(click);
     }
@@ -808,5 +678,67 @@ public class BetterSearchTabScreen extends TabScreen {
 
     private static double clamp(double v, double min, double max) {
         return Math.max(min, Math.min(max, v));
+    }
+
+    /**
+     * Classic draggable Meteor window + a yellow marker on top identifying the
+     * module picked from Better Search. Used when inline-settings is OFF
+     * (Meteor's own window has no outline API, so we mark it instead).
+     */
+    public static class OutlinedModuleScreen extends meteordevelopment.meteorclient.gui.screens.ModuleScreen {
+        private final Module mod;
+
+        public OutlinedModuleScreen(GuiTheme theme, Module module) {
+            super(theme, module);
+            this.mod = module;
+        }
+
+        @Override
+        public void initWidgets() {
+            super.initWidgets();
+            // Prepend marker so it sits at the very top without disturbing Meteor's layout.
+            // (Content cells live in window.view, not window itself.)
+            WLabel marker = theme.label("◉ " + mod.title + " — from Better Search");
+            try {
+                marker.color(meteordevelopment.meteorclient.utils.render.color.Color.YELLOW);
+            } catch (Exception ignored) {}
+            java.util.List<meteordevelopment.meteorclient.gui.utils.Cell<?>> cells =
+                new java.util.ArrayList<>(window.view.cells);
+            window.clear();
+            add(marker).expandX().widget();
+            for (meteordevelopment.meteorclient.gui.utils.Cell<?> cell : cells) {
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                meteordevelopment.meteorclient.gui.utils.Cell raw = cell;
+                window.view.cells.add(raw);
+            }
+            window.invalidate();
+        }
+
+        @Override
+        public void render(net.minecraft.client.gui.DrawContext context, int mouseX, int mouseY, float delta) {
+            super.render(context, mouseX, mouseY, delta);
+            // Yellow outline around Meteor's outer window.
+            // Widget coords are raw pixels; DrawContext works in scaled units.
+            try {
+                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
+                int pad = 3;
+                int x = (int) Math.floor(window.x / s) - pad;
+                int y = (int) Math.floor(window.y / s) - pad;
+                int w = (int) Math.ceil(window.width / s) + pad * 2;
+                int h = (int) Math.ceil(window.height / s) + pad * 2;
+                int yellow = 0xFFFFFF00;
+                int t = 2;
+                // Outer 2px ring
+                context.fill(x - 2, y - 2, x + w + 2, y, yellow);
+                context.fill(x - 2, y + h, x + w + 2, y + h + 2, yellow);
+                context.fill(x - 2, y, x, y + h, yellow);
+                context.fill(x + w, y, x + w + 2, y + h, yellow);
+                // Inner 2px ring
+                context.fill(x, y, x + w, y + t, yellow);
+                context.fill(x, y + h - t, x + w, y + h, yellow);
+                context.fill(x, y, x + t, y + h, yellow);
+                context.fill(x + w - t, y, x + w, y + h, yellow);
+            } catch (Exception ignored) {}
+        }
     }
 }

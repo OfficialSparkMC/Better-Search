@@ -13,8 +13,11 @@ Made by Turbo.
   with fuzzy matching (typos and word order don't matter much).
 - Matches names, descriptions, categories, aliases, setting names, and custom
   `@SearchTags` synonyms.
+- Rows use Meteor's own module widgets, so they look and click exactly like the
+  rest of ClickGUI (active styling included) — no custom drawing to break.
 - **Learns what you use** — toggling a module bumps it up in future results.
   Stored in `meteor-client/better-search-usage.json`, delete it to reset.
+- Toggling never reshuffles the list — order only changes when your search text does.
 - Left-click toggles a module, right-click opens its settings right inside the tab
   (or the normal Meteor window if you turn that off).
 - Keyboard: `Up/Down` to move, `Enter` to toggle, `Right` for settings, `Esc` to close.
@@ -34,9 +37,8 @@ Under ClickGUI → Better Search → `better-search`. The useful ones:
 
 - `max-results` — how many rows when filtering (default 100, empty search always shows everything)
 - `columns` — modules per line, 1–3
-- `panel-width`, `row-gap`, `row-inner-gap`, `card-padding`, `corner-radius`, `rounded-cards` — look and density
-- `show-dot`, `show-category`, `show-status`, `inline-outline` — which bits to display
-- `menu-background`, `menu-bg-color`, `menu-outline`, `menu-corner-radius`, `menu-padding` — background + outline of the open module menu
+- `panel-width`, `row-gap`, `row-inner-gap` — sizing and density
+- `show-category`, `show-status`, `inline-outline` — which bits to display
 - `learn-usage` — turn off if you don't want usage-based ranking
 - `inline-settings` — off = module settings open in a normal draggable Meteor window
 - `draggable-panel` — shows a drag handle to move the panel around
