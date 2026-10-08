@@ -129,6 +129,13 @@ public class BetterSearchTabScreen extends TabScreen {
     private class WClickRow extends WHorizontalList {
         Runnable onSettings;
 
+        WClickRow(GuiTheme theme) {
+            // Theme must be set BEFORE any child is added: WContainer.add stamps
+            // children with the parent's theme, so adding to a themeless row
+            // nulls their theme and crashes layout (WLabel NPE).
+            this.theme = theme;
+        }
+
         @Override
         public boolean mouseClicked(Click click, boolean doubled) {
             if (click.button() == GLFW_MOUSE_BUTTON_RIGHT && isOver(click.x(), click.y())) {
@@ -143,6 +150,7 @@ public class BetterSearchTabScreen extends TabScreen {
     public void initWidgets() {
         // Fixed modern panel: centered, customizable width, optionally draggable (no WWindow).
         panel = new WDragPanel();
+        panel.theme = theme;
         panel.spacing = 6;
         add(panel).centerX().marginTop(46).widget();
         panel.minWidth = 500;
@@ -152,6 +160,7 @@ public class BetterSearchTabScreen extends TabScreen {
         BetterSearchModule cfg = config();
         if (cfg != null && cfg.draggablePanel.get()) {
             dragHandle = new WDragHandle();
+            dragHandle.theme = theme;
             panel.add(dragHandle).expandX().widget();
         } else {
             dragHandle = null;
@@ -372,7 +381,7 @@ public class BetterSearchTabScreen extends TabScreen {
 
     private WClickRow makeRow(ModuleSearch.Result r, int flatIndex, boolean showCategory, boolean forceMark) {
         BetterSearchModule cfg = config();
-        WClickRow row = new WClickRow();
+        WClickRow row = new WClickRow(theme);
         row.spacing = cfg != null ? cfg.rowInnerGap.get() : 4;
 
         boolean isSel = flatIndex == selected;
