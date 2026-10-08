@@ -379,6 +379,8 @@ public class BetterSearchTabScreen extends TabScreen {
     private ModuleCard makeCard(ModuleSearch.Result r, int flatIndex, boolean showCategory, boolean showMeta) {
         BetterSearchModule cfg = config();
         ModuleCard card = new ModuleCard(r);
+        card.screen = this;
+        card.flatIndex = flatIndex;
         card.selected = flatIndex == selected;
         card.rounded = cfg == null || cfg.roundedCards.get();
         card.radius = cfg != null ? cfg.cornerRadius.get() : 6;
@@ -392,6 +394,8 @@ public class BetterSearchTabScreen extends TabScreen {
         }
         card.tooltip = cardTooltip(r);
         card.onToggle = () -> {
+            // Clicked card becomes the keyboard selection too (yellow follows the mouse).
+            selectCard(flatIndex);
             // In-place update: no list rebuild, so nothing moves, scroll and
             // selection stay exactly where they are.
             r.module().toggle();
@@ -413,6 +417,26 @@ public class BetterSearchTabScreen extends TabScreen {
             + "\n" + r.module().description
             + (uses > 0 ? "\nUsed " + uses + "x" : "")
             + "\nLeft-click toggle • Right-click settings";
+    }
+
+    /** Clicked card takes over keyboard selection so yellow always marks last interaction. */
+    void selectCard(int flatIndex) {
+        if (flatIndex < 0 || flatIndex >= current.size()) return;
+        selected = flatIndex;
+        for (ModuleCard c : cardMap.values()) {
+            boolean should = c.flatIndex == flatIndex;
+            if (c.selected != should) {
+                c.selected = should;
+                c.invalidate();
+            }
+        }
+        if (statusLabel != null && !current.isEmpty()) {
+            String q = searchBox != null ? searchBox.get().trim() : "";
+            if (!q.isEmpty()) {
+                ModuleSearch.Result best = current.get(Math.min(selected, current.size() - 1));
+                statusLabel.set(current.size() + " results • selected: " + best.module().title + " (Enter toggle, Right settings)");
+            }
+        }
     }
 
     private void addRow(ModuleSearch.Result r, int index, boolean showCategory) {

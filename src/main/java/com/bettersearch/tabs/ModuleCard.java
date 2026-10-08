@@ -38,6 +38,10 @@ public class ModuleCard extends WPressable {
     public Runnable onToggle;
     public Runnable onSettings;
 
+    /** Position in the screen's flat list + owning screen (syncs click with keyboard selection). */
+    public int flatIndex = -1;
+    public BetterSearchTabScreen screen;
+
     private double pad;
     private double titleW;
     private double metaW;
@@ -86,14 +90,18 @@ public class ModuleCard extends WPressable {
         double rad = theme.scale(radius);
 
         if (outline != null) {
-            // Border as 4 plain quads (no texture dependency) + tinted bg below.
-            // Visible on every theme and GUI scale.
+            // Rounded ring following the card corners (falls back to plain border).
+            // Min 2 units so it stays visible on every GUI scale.
             double o = theme.scale(1.5);
             if (o < 2) o = 2;
-            renderer.quad(x - o, y - o, width + o * 2, o, outline); // top
-            renderer.quad(x - o, y + height, width + o * 2, o, outline); // bottom
-            renderer.quad(x - o, y, o, height, outline); // left
-            renderer.quad(x + width, y, o, height, outline); // right
+            if (rounded && rad > 0) {
+                rounded(renderer, x - o, y - o, width + o * 2, height + o * 2, rad + o, outline);
+            } else {
+                renderer.quad(x - o, y - o, width + o * 2, o, outline); // top
+                renderer.quad(x - o, y + height, width + o * 2, o, outline); // bottom
+                renderer.quad(x - o, y, o, height, outline); // left
+                renderer.quad(x + width, y, o, height, outline); // right
+            }
         }
 
         if (rounded && rad > 0) rounded(renderer, x, y, width, height, rad, bg);
@@ -140,17 +148,21 @@ public class ModuleCard extends WPressable {
         // Meteor only refreshes hover on mouse motion, so a rebuilt card under a
         // stationary cursor would eat clicks. Recompute for the click position.
         mouseOver = isOver(click.x(), click.y());
-        boolean consumed = super.mouseClicked(click, doubled);
-        com.bettersearch.BetterSearchAddon.LOG.info(
-            "[BetterSearch] press module={} over={} consumed={} pressed={}",
-            result.module().name, mouseOver, consumed, pressed);
-        return consumed;
+        return super.mouseClicked(click, doubled);
+    }
+
+    @Override
+    public boolean mouseReleased(Click click) {
+        try {
+            return super.mouseReleased(click);
+        } finally {
+            // Pressed must never get stuck: a stuck flag eats all future clicks.
+            pressed = false;
+        }
     }
 
     @Override
     protected void onPressed(int button) {
-        com.bettersearch.BetterSearchAddon.LOG.info(
-            "[BetterSearch] onPressed module={} button={}", result.module().name, button);
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             if (onToggle != null) onToggle.run();
         } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
