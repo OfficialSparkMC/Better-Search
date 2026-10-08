@@ -80,7 +80,7 @@ public class CardBack extends WVerticalList {
 
     /** Quarter disc approximated with small horizontal steps (no disc texture -> no circles). */
     private static void corner(GuiRenderer r, double cx, double cy, double rad, Color c, boolean right, boolean bottom) {
-        int n = Math.max(4, (int) Math.ceil(rad / 2));
+        int n = Math.max(12, (int) Math.ceil(rad * 2));
         double step = rad / n;
         for (int j = 0; j < n; j++) {
             double y0 = cy + (bottom ? j : -j - 1) * step;
