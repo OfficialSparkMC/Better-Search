@@ -388,6 +388,7 @@ public class BetterSearchTabScreen extends TabScreen {
         card.showDot = cfg == null || cfg.showDot.get();
         card.showMeta = showMeta;
         card.showCategory = showCategory && (cfg == null || cfg.showCategory.get());
+        card.largeTitle = cfg != null && cfg.largeTitles.get();
         // Outline the right-clicked module (toggleable via inline-outline)
         if ((cfg == null || cfg.inlineOutline.get()) && r.module() == outlinedModule) {
             card.outline = meteordevelopment.meteorclient.utils.render.color.Color.YELLOW;

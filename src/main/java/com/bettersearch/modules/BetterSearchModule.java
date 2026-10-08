@@ -151,6 +151,13 @@ public class BetterSearchModule extends Module {
         .build()
     );
 
+    public final Setting<Boolean> largeTitles = sgAppearance.add(new BoolSetting.Builder()
+        .name("large-titles")
+        .description("Bigger module title text (= bigger module buttons).")
+        .defaultValue(false)
+        .build()
+    );
+
     public final Setting<Boolean> inlineSettings = sgAppearance.add(new BoolSetting.Builder()
         .name("inline-settings")
         .description("Open module settings INSIDE Better Search (locked, non-draggable). Off = classic draggable Meteor window.")

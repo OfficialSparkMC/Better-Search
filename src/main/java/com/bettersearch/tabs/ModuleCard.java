@@ -27,6 +27,8 @@ public class ModuleCard extends WPressable {
     public double radius = 6;
     public int padExtra = 2;
     public boolean showDot = true;
+    /** Large title text (theme title style) for bigger module buttons. */
+    public boolean largeTitle = false;
     /** Show right-side meta text (compact grid hides it, tooltip carries details). */
     public boolean showMeta = true;
     /** Include category in meta (grouped view already has headers). */
@@ -62,7 +64,8 @@ public class ModuleCard extends WPressable {
         double gap = theme.scale(4);
 
         dotSize = theme.textHeight() * 0.62;
-        titleW = theme.textWidth(result.module().title);
+        String title = result.module().title;
+        titleW = theme.textWidth(title, title.length(), largeTitle);
         String live = liveMeta();
         metaW = live != null ? theme.textWidth(live) : 0;
 
@@ -71,7 +74,7 @@ public class ModuleCard extends WPressable {
         if (live != null) w += gap + metaW;
 
         width = w;
-        height = pad * 2 + theme.textHeight();
+        height = pad * 2 + theme.textHeight(largeTitle);
 
         double minWidth = theme.scale(this.minWidth);
         if (width < minWidth) width = minWidth;
@@ -123,7 +126,7 @@ public class ModuleCard extends WPressable {
             cx += ds + theme.scale(4);
         }
 
-        renderer.text(result.module().title, cx, y + pad, theme.textColor(), false);
+        renderer.text(result.module().title, cx, y + pad, theme.textColor(), largeTitle);
 
         String live = liveMeta();
         if (live != null) {
@@ -132,6 +135,11 @@ public class ModuleCard extends WPressable {
         }
     }
 
+    /**
+     * Filled rounded rectangle with ZERO overlapping pieces (no double-blended
+     * stripes or visible disc edges with translucent colors): center + 4 edge
+     * bars + 4 corner discs. Every pixel is painted exactly once.
+     */
     static void rounded(GuiRenderer r, double x, double y, double w, double h, double rad, Color c) {
         if (w <= 0 || h <= 0) return;
         rad = Math.min(rad, Math.min(w, h) / 2);
@@ -140,8 +148,14 @@ public class ModuleCard extends WPressable {
             return;
         }
         double d = rad * 2;
-        r.quad(x + rad, y, w - d, h, c);
-        r.quad(x, y + rad, w, h - d, c);
+        // Center (largest, no overlap with anything below)
+        r.quad(x + rad, y + rad, w - d, h - d, c);
+        // Edge bars between the corner squares (disjoint from center and each other)
+        r.quad(x + rad, y, w - d, rad, c); // top
+        r.quad(x + rad, y + h - rad, w - d, rad, c); // bottom
+        r.quad(x, y + rad, rad, h - d, c); // left
+        r.quad(x + w - rad, y + rad, rad, h - d, c); // right
+        // Corner discs fill exactly their squares
         r.quad(x, y, d, d, GuiRenderer.CIRCLE, c);
         r.quad(x + w - d, y, d, d, GuiRenderer.CIRCLE, c);
         r.quad(x, y + h - d, d, d, GuiRenderer.CIRCLE, c);
