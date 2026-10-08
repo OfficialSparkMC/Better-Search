@@ -22,6 +22,7 @@ public class CardBack extends WVerticalList {
 
     public boolean selected = false;
     public boolean outlined = false;
+    public double radius = 6;
     public double pad = 2;
 
     /** Right-click action (e.g. open settings). Left clicks pass to children. */
@@ -44,9 +45,8 @@ public class CardBack extends WVerticalList {
 
     @Override
     protected void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta) {
-        // Plain square cards only: background quad + 4 straight outline bars.
-        // No curves, no textures — nothing here can render a circle.
         Color bg = outlined ? BG_OUTLINED : (selected ? BG_SELECTED : BG);
+        double rad = theme.scale(radius);
         double p = theme.scale(pad);
         double x = this.x - p;
         double y = this.y - p;
@@ -55,11 +55,39 @@ public class CardBack extends WVerticalList {
         if (outlined) {
             double o = theme.scale(1.5);
             if (o < 2) o = 2;
-            renderer.quad(x - o, y - o, w + o * 2, o, Color.YELLOW);
-            renderer.quad(x - o, y + h, w + o * 2, o, Color.YELLOW);
-            renderer.quad(x - o, y, o, h, Color.YELLOW);
-            renderer.quad(x + w, y, o, h, Color.YELLOW);
+            if (rad > 0) rounded(renderer, x - o, y - o, w + o * 2, h + o * 2, rad + o, Color.YELLOW);
+            else {
+                renderer.quad(x - o, y - o, w + o * 2, o, Color.YELLOW);
+                renderer.quad(x - o, y + h, w + o * 2, o, Color.YELLOW);
+                renderer.quad(x - o, y, o, h, Color.YELLOW);
+                renderer.quad(x + w, y, o, h, Color.YELLOW);
+            }
         }
-        renderer.quad(x, y, w, h, bg);
+        if (rad > 0) rounded(renderer, x, y, w, h, rad, bg);
+        else renderer.quad(x, y, w, h, bg);
+    }
+
+    /** Filled rounded rect, every pixel painted once (center + edge bars + corner discs). */
+    static void rounded(GuiRenderer r, double x, double y, double w, double h, double rad, Color c) {
+        if (w <= 0 || h <= 0) return;
+        rad = Math.min(rad, Math.min(w, h) / 2);
+        if (rad <= 0) {
+            r.quad(x, y, w, h, c);
+            return;
+        }
+        double d = rad * 2;
+        if (w < d * 2 || h < d * 2) {
+            r.quad(x, y, w, h, c);
+            return;
+        }
+        r.quad(x + rad, y + rad, w - d, h - d, c);
+        r.quad(x + d, y, w - d * 2, rad, c);
+        r.quad(x + d, y + h - rad, w - d * 2, rad, c);
+        r.quad(x, y + d, rad, h - d * 2, c);
+        r.quad(x + w - rad, y + d, rad, h - d * 2, c);
+        r.quad(x, y, d, d, GuiRenderer.CIRCLE, c);
+        r.quad(x + w - d, y, d, d, GuiRenderer.CIRCLE, c);
+        r.quad(x, y + h - d, d, d, GuiRenderer.CIRCLE, c);
+        r.quad(x + w - d, y + h - d, d, d, GuiRenderer.CIRCLE, c);
     }
 }

@@ -360,34 +360,33 @@ public class BetterSearchTabScreen extends TabScreen {
         card.selected = flatIndex == selected;
         card.outlined = forceMark || (r.module() == outlinedModule && (cfg == null || cfg.inlineOutline.get()));
         card.pad = cfg != null ? cfg.cardPadding.get() : 2;
+        card.radius = cfg != null ? cfg.cornerRadius.get() : 6;
 
         WHorizontalList row = theme.horizontalList();
         row.spacing = cfg != null ? cfg.rowInnerGap.get() : 4;
 
         boolean isSel = flatIndex == selected;
-        boolean isOut = card.outlined;
-        WLabel mark = row.add(theme.label(isOut ? "*" : (isSel ? ">" : " "))).widget();
-        try {
-            mark.color(isOut ? Color.YELLOW : (isSel ? theme.textColor() : theme.textSecondaryColor()));
-        } catch (Exception ignored) {}
 
         // Meteor's own module widget: native look, native clicks, live active styling
         WWidget modWidget = theme.module(r.module());
         int uses = UsageTracker.getCount(r.module());
-        String state = r.module().isActive() ? "ON" : "OFF";
+        boolean active = r.module().isActive();
         modWidget.tooltip = r.matchedText()
-            + "  [" + r.module().category.name + "]  (" + state + ")"
+            + "  [" + r.module().category.name + "]  (" + (active ? "ON" : "OFF") + ")"
             + "\n" + r.module().description
             + (uses > 0 ? "\nUsed " + uses + "x" : "")
             + "\nLeft-click toggle • Right-click settings";
         row.add(modWidget).expandX();
 
+        // Simple enabled indicator on the right: ON/OFF, plus category when on.
+        String meta = active ? "ON" : "OFF";
         if (showCategory && (cfg == null || cfg.showCategory.get())) {
-            WLabel cat = row.add(theme.label(r.module().category.name)).right().widget();
-            try {
-                cat.color(isSel ? theme.textColor() : theme.textSecondaryColor());
-            } catch (Exception ignored) {}
+            meta = r.module().category.name + " · " + meta;
         }
+        WLabel metaLabel = row.add(theme.label(meta)).right().widget();
+        try {
+            metaLabel.color(active ? Color.GREEN : theme.textSecondaryColor());
+        } catch (Exception ignored) {}
 
         card.add(row).expandX().widget();
         card.onSettings = () -> openModuleSettings(r.module());
@@ -473,6 +472,7 @@ public class BetterSearchTabScreen extends TabScreen {
         BetterSearchModule cfg = config();
         CardBack menu = new CardBack(theme);
         menu.pad = cfg != null ? cfg.cardPadding.get() + 2 : 4;
+        menu.radius = cfg != null ? cfg.cornerRadius.get() : 6;
         menu.spacing = 4;
         list.add(menu).expandX().widget();
 
