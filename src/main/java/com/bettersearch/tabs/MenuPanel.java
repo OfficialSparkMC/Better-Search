@@ -25,17 +25,12 @@ public class MenuPanel extends WVerticalList {
         double y = this.y - p;
         double w = this.width + p * 2;
         double h = this.height + p * 2;
-        // Outline ring first (follows the same rounded corners), background on top.
+        // Outline as edge lines only (no corner pieces): corners show the rounded
+        // background, so discs or rings can never appear at the outline.
         if (outline) {
             double o = theme.scale(1.5);
             if (o < 2) o = 2;
-            if (rad > 0) ModuleCard.rounded(renderer, x - o, y - o, w + o * 2, h + o * 2, rad + o, outlineColor);
-            else {
-                renderer.quad(x - o, y - o, w + o * 2, o, outlineColor);
-                renderer.quad(x - o, y + h, w + o * 2, o, outlineColor);
-                renderer.quad(x - o, y, o, h, outlineColor);
-                renderer.quad(x + w, y, o, h, outlineColor);
-            }
+            ModuleCard.edgeLines(renderer, x, y, w, h, rad, o, outlineColor);
         }
         if (drawBg) {
             if (rad > 0) ModuleCard.rounded(renderer, x, y, w, h, rad, bg);

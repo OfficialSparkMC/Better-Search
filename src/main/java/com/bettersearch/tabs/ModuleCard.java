@@ -97,18 +97,11 @@ public class ModuleCard extends WPressable {
         double rad = theme.scale(radius);
 
         if (outline != null) {
-            // Rounded ring following the card corners (falls back to plain border).
-            // Min 2 units so it stays visible on every GUI scale.
+            // Edge lines only (no corner pieces): corners show the rounded card,
+            // so discs or rings can never appear at the outline.
             double o = theme.scale(1.5);
             if (o < 2) o = 2;
-            if (rounded && rad > 0) {
-                rounded(renderer, x - o, y - o, width + o * 2, height + o * 2, rad + o, outline);
-            } else {
-                renderer.quad(x - o, y - o, width + o * 2, o, outline); // top
-                renderer.quad(x - o, y + height, width + o * 2, o, outline); // bottom
-                renderer.quad(x - o, y, o, height, outline); // left
-                renderer.quad(x + width, y, o, height, outline); // right
-            }
+            edgeLines(renderer, x, y, width, height, rad, o, outline);
         }
 
         if (rounded && rad > 0) rounded(renderer, x, y, width, height, rad, bg);
@@ -132,6 +125,37 @@ public class ModuleCard extends WPressable {
         if (live != null) {
             Color metaColor = selected ? theme.textColor() : theme.textSecondaryColor();
             renderer.text(live, x + width - pad - metaW, y + pad, metaColor, false);
+        }
+    }
+
+    /**
+     * Outline edge lines that stop before the corner zones (no corner pieces at
+     * all, so no discs/rings can ever appear): straight segments along each edge
+     * between the rounded corners. Corners show only the rounded background.
+     */
+    static void edgeLines(GuiRenderer r, double x, double y, double w, double h, double rad, double o, Color c) {
+        if (w <= 0 || h <= 0 || o <= 0) return;
+        rad = Math.min(rad, Math.min(w, h) / 2);
+        if (rad < 0) rad = 0;
+        if (rad <= 0) {
+            // Square shape: plain full ring
+            r.quad(x - o, y - o, w + o * 2, o, c);
+            r.quad(x - o, y + h, w + o * 2, o, c);
+            r.quad(x - o, y, o, h, c);
+            r.quad(x + w, y, o, h, c);
+            return;
+        }
+        double ix0 = x + rad * 2;
+        double ix1 = x + w - rad * 2;
+        double iy0 = y + rad * 2;
+        double iy1 = y + h - rad * 2;
+        if (ix1 > ix0) {
+            r.quad(ix0, y - o, ix1 - ix0, o, c); // top
+            r.quad(ix0, y + h, ix1 - ix0, o, c); // bottom
+        }
+        if (iy1 > iy0) {
+            r.quad(x - o, iy0, o, iy1 - iy0, c); // left
+            r.quad(x + w, iy0, o, iy1 - iy0, c); // right
         }
     }
 
