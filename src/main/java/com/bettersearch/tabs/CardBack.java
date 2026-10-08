@@ -74,8 +74,8 @@ public class CardBack extends WVerticalList {
      */
     static void rounded(GuiRenderer r, double x, double y, double w, double h, double rad, Color c) {
         if (w <= 0 || h <= 0) return;
-        rad = Math.min(rad, Math.min(w, h) / 2);
-        if (rad <= 0 || w < rad * 4 || h < rad * 4) {
+        rad = Math.max(0, Math.min(rad, Math.min(w, h) / 2));
+        if (rad <= 0 || w < rad * 2 || h < rad * 2) {
             r.quad(x, y, w, h, c);
             return;
         }
