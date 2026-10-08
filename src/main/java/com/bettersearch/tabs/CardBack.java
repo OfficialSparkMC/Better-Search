@@ -45,24 +45,13 @@ public class CardBack extends WVerticalList {
 
     @Override
     protected void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta) {
-        Color bg = outlined ? BG_OUTLINED : (selected ? BG_SELECTED : BG);
+        Color bg = selected ? BG_SELECTED : BG;
         double rad = theme.scale(radius);
         double p = theme.scale(pad);
         double x = this.x - p;
         double y = this.y - p;
         double w = this.width + p * 2;
         double h = this.height + p * 2;
-        if (outlined) {
-            double o = theme.scale(1.5);
-            if (o < 2) o = 2;
-            if (rad > 0) rounded(renderer, x - o, y - o, w + o * 2, h + o * 2, rad + o, Color.YELLOW);
-            else {
-                renderer.quad(x - o, y - o, w + o * 2, o, Color.YELLOW);
-                renderer.quad(x - o, y + h, w + o * 2, o, Color.YELLOW);
-                renderer.quad(x - o, y, o, h, Color.YELLOW);
-                renderer.quad(x + w, y, o, h, Color.YELLOW);
-            }
-        }
         if (rad > 0) rounded(renderer, x, y, w, h, rad, bg);
         else renderer.quad(x, y, w, h, bg);
     }

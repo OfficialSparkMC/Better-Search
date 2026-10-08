@@ -695,7 +695,7 @@ public class BetterSearchTabScreen extends TabScreen {
             // (Content cells live in window.view, not window itself.)
             WLabel marker = theme.label("◉ " + mod.title + " — from Better Search");
             try {
-                marker.color(meteordevelopment.meteorclient.utils.render.color.Color.YELLOW);
+                marker.color(meteordevelopment.meteorclient.utils.render.color.Color.WHITE);
             } catch (Exception ignored) {}
             java.util.List<meteordevelopment.meteorclient.gui.utils.Cell<?>> cells =
                 new java.util.ArrayList<>(window.view.cells);
@@ -721,7 +721,7 @@ public class BetterSearchTabScreen extends TabScreen {
                 int y = (int) Math.floor(window.y / s) - pad;
                 int w = (int) Math.ceil(window.width / s) + pad * 2;
                 int h = (int) Math.ceil(window.height / s) + pad * 2;
-                int yellow = 0xFFFFFF00;
+                int yellow = 0xFF888888;
                 int t = 2;
                 // Outer 2px ring
                 context.fill(x - 2, y - 2, x + w + 2, y, yellow);
