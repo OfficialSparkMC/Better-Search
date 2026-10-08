@@ -565,6 +565,7 @@ public class BetterSearchTabScreen extends TabScreen {
         Module m = inlineModule;
         if (m == null) return;
         list.clear();
+        cardMap.clear();
 
         if (statusLabel != null) {
             statusLabel.set("Settings: " + m.title + " — Left/Backspace for list, or type to search");

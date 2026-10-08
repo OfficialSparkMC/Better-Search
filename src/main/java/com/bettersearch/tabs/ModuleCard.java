@@ -38,6 +38,10 @@ public class ModuleCard extends WPressable {
     public Runnable onToggle;
     public Runnable onSettings;
 
+    /** Local click tracking: press and release positions. Immune to stale hover/pressed flags. */
+    private boolean pressArmed = false;
+    private int pressButton = -1;
+
     /** Position in the screen's flat list + owning screen (syncs click with keyboard selection). */
     public int flatIndex = -1;
     public BetterSearchTabScreen screen;
@@ -146,28 +150,41 @@ public class ModuleCard extends WPressable {
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
-        // Meteor only refreshes hover on mouse motion, so a rebuilt card under a
-        // stationary cursor would eat clicks. Recompute for the click position.
+        // Self-contained click tracking: arm on press over the card, fire on
+        // release over the card. Does not depend on hover history or on the
+        // press/release pairing of the base class, so repeated clicks, keyboard
+        // selection changes and rebuilds cannot desync it.
         mouseOver = isOver(click.x(), click.y());
-        return super.mouseClicked(click, doubled);
+        int button = click.button();
+        if (mouseOver && (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT)) {
+            pressArmed = true;
+            pressButton = button;
+            return true;
+        }
+        pressArmed = false;
+        pressButton = -1;
+        return false;
     }
 
     @Override
     public boolean mouseReleased(Click click) {
-        try {
-            return super.mouseReleased(click);
-        } finally {
-            // Pressed must never get stuck: a stuck flag eats all future clicks.
-            pressed = false;
+        boolean fire = pressArmed && pressButton == click.button() && isOver(click.x(), click.y());
+        pressArmed = false;
+        pressButton = -1;
+        mouseOver = isOver(click.x(), click.y());
+        if (fire) {
+            if (click.button() == GLFW_MOUSE_BUTTON_LEFT) {
+                if (onToggle != null) onToggle.run();
+            } else if (click.button() == GLFW_MOUSE_BUTTON_RIGHT) {
+                if (onSettings != null) onSettings.run();
+            }
+            return true;
         }
+        return false;
     }
 
     @Override
     protected void onPressed(int button) {
-        if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            if (onToggle != null) onToggle.run();
-        } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-            if (onSettings != null) onSettings.run();
-        }
+        // Unused: clicks are handled geometrically above, never via base-class pairing.
     }
 }
