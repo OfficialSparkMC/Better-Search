@@ -358,7 +358,6 @@ public class BetterSearchTabScreen extends TabScreen {
         CardBack card = new CardBack(theme);
         card.selected = flatIndex == selected;
         card.outlined = forceMark || (r.module() == outlinedModule && (cfg == null || cfg.inlineOutline.get()));
-        card.radius = cfg != null ? cfg.cornerRadius.get() : 6;
         card.pad = cfg != null ? cfg.cardPadding.get() : 2;
 
         WHorizontalList row = theme.horizontalList();
@@ -472,7 +471,6 @@ public class BetterSearchTabScreen extends TabScreen {
 
         BetterSearchModule cfg = config();
         CardBack menu = new CardBack(theme);
-        menu.radius = cfg != null ? cfg.cornerRadius.get() : 6;
         menu.pad = cfg != null ? cfg.cardPadding.get() + 2 : 4;
         menu.spacing = 4;
         list.add(menu).expandX().widget();
