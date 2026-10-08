@@ -67,27 +67,38 @@ public class CardBack extends WVerticalList {
         else renderer.quad(x, y, w, h, bg);
     }
 
-    /** Filled rounded rect, every pixel painted once (center + edge bars + corner discs). */
+    /**
+     * Rounded rect via disjoint rectangles only: middle column + side columns +
+     * corner quarter-discs drawn as small step bars (never any disc texture,
+     * every pixel painted exactly once — no bands, no nubs, no circles).
+     */
     static void rounded(GuiRenderer r, double x, double y, double w, double h, double rad, Color c) {
         if (w <= 0 || h <= 0) return;
         rad = Math.min(rad, Math.min(w, h) / 2);
-        if (rad <= 0) {
+        if (rad <= 0 || w < rad * 4 || h < rad * 4) {
             r.quad(x, y, w, h, c);
             return;
         }
-        double d = rad * 2;
-        if (w < d * 2 || h < d * 2) {
-            r.quad(x, y, w, h, c);
-            return;
+        double cx0 = x + rad, cx1 = x + w - rad, cy0 = y + rad, cy1 = y + h - rad;
+        r.quad(cx0, y, cx1 - cx0, h, c); // middle column
+        r.quad(x, cy0, rad, cy1 - cy0, c); // left column
+        r.quad(cx1, cy0, rad, cy1 - cy0, c); // right column
+        corner(r, cx0, cy0, rad, c, false, false); // top-left
+        corner(r, cx1, cy0, rad, c, true, false); // top-right
+        corner(r, cx0, cy1, rad, c, false, true); // bottom-left
+        corner(r, cx1, cy1, rad, c, true, true); // bottom-right
+    }
+
+    /** Quarter disc approximated with small horizontal steps (no disc texture -> no circles). */
+    private static void corner(GuiRenderer r, double cx, double cy, double rad, Color c, boolean right, boolean bottom) {
+        int n = Math.max(4, (int) Math.ceil(rad / 2));
+        double step = rad / n;
+        for (int j = 0; j < n; j++) {
+            double y0 = cy + (bottom ? j : -j - 1) * step;
+            double yy = y0 + step * 0.5 - cy;
+            double a = Math.sqrt(Math.max(0, rad * rad - yy * yy));
+            double bx = right ? cx : cx - a;
+            r.quad(bx, y0, a, step, c);
         }
-        r.quad(x + rad, y + rad, w - d, h - d, c);
-        r.quad(x + d, y, w - d * 2, rad, c);
-        r.quad(x + d, y + h - rad, w - d * 2, rad, c);
-        r.quad(x, y + d, rad, h - d * 2, c);
-        r.quad(x + w - rad, y + d, rad, h - d * 2, c);
-        r.quad(x, y, d, d, GuiRenderer.CIRCLE, c);
-        r.quad(x + w - d, y, d, d, GuiRenderer.CIRCLE, c);
-        r.quad(x, y + h - d, d, d, GuiRenderer.CIRCLE, c);
-        r.quad(x + w - d, y + h - d, d, d, GuiRenderer.CIRCLE, c);
     }
 }
