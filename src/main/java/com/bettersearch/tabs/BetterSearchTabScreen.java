@@ -51,6 +51,8 @@ public class BetterSearchTabScreen extends TabScreen {
     private WDragPanel panel;
     private WView scroll;
     private WVerticalList list;
+    /** Inline settings menu lives here so the search list (and its scroll) stay intact. */
+    private WVerticalList menuList;
 
     /** Flat list in display order for keyboard nav (grouped mode is flattened). */
     private List<ModuleSearch.Result> current = List.of();
@@ -71,6 +73,9 @@ public class BetterSearchTabScreen extends TabScreen {
     /** Inline bind editor + active box, kept live via Meteor's change events (like its own screen). */
     private WKeybind inlineKeybind = null;
     private WCheckbox inlineActiveBox = null;
+
+    /** Status line text before the inline menu opened, restored when it closes. */
+    private String statusBeforeInline = "";
 
     /** Session-persistent drag offset for the panel. */
     private static double savedDragX = 0;
@@ -146,9 +151,10 @@ public class BetterSearchTabScreen extends TabScreen {
         searchBox.minWidth = 480;
         searchBox.action = () -> {
             selected = 0;
-            // Typing a new search while inline leaves the settings and filters the list
+            // Typing while inline leaves the settings; otherwise just filter.
+            // Always rebuild afterwards so the list matches the new query.
             if (inlineModule != null) closeInline();
-            else refreshResults();
+            refreshResults();
         };
 
         statusLabel = panel.add(theme.label("")).expandX().widget();
@@ -165,6 +171,12 @@ public class BetterSearchTabScreen extends TabScreen {
         list = theme.verticalList();
         list.spacing = 2;
         scroll.add(list).expandX().widget();
+
+        // Inline settings menu: separate container, hidden until a module is right-clicked,
+        // so the results list is never rebuilt/destroyed while its menu is open.
+        menuList = theme.verticalList();
+        menuList.visible = false;
+        panel.add(menuList).expandX().widget();
 
         refreshResults();
 
@@ -198,6 +210,8 @@ public class BetterSearchTabScreen extends TabScreen {
         if (statusLabel != null) statusLabel.visible = showStatus;
 
         if (inlineModule != null) {
+            // Inline menu lives in its own container; leave the list untouched so
+            // selection, order and scroll survive.
             showInline();
             return;
         }
@@ -456,17 +470,27 @@ public class BetterSearchTabScreen extends TabScreen {
         inlineSettingsHolder = null;
         inlineKeybind = null;
         inlineActiveBox = null;
-        refreshResults();
+        // Hide the menu and bring the untouched results list back (scroll/selection intact)
+        if (menuList != null) {
+            menuList.clear();
+            menuList.visible = false;
+        }
+        if (scroll != null) scroll.visible = true;
+        if (statusLabel != null) statusLabel.set(statusBeforeInline);
         searchBox.setFocused(true);
     }
 
     private void showInline() {
         Module m = inlineModule;
-        if (m == null) return;
-        list.clear();
+        if (m == null || menuList == null) return;
+        menuList.clear();
+        // Swap containers: menu visible, results list hidden (but kept alive)
+        menuList.visible = true;
+        if (scroll != null) scroll.visible = false;
 
         if (statusLabel != null) {
-            statusLabel.set("Settings: " + m.title + " — Left/Backspace for list, or type to search");
+            statusBeforeInline = statusLabel.get();
+            statusLabel.set("Settings: " + m.title + " — Esc or Backspace for list, or type to search");
         }
 
         BetterSearchModule cfg = config();
@@ -474,7 +498,7 @@ public class BetterSearchTabScreen extends TabScreen {
         menu.pad = cfg != null ? cfg.cardPadding.get() + 2 : 4;
         menu.radius = cfg != null ? cfg.cornerRadius.get() : 6;
         menu.spacing = 4;
-        list.add(menu).expandX().widget();
+        menuList.add(menu).expandX().widget();
 
         WHorizontalList top = theme.horizontalList();
         top.spacing = 4;
@@ -589,12 +613,16 @@ public class BetterSearchTabScreen extends TabScreen {
             try {
                 binding = Modules.get().isBinding();
             } catch (Exception ignored) {}
-            if (!binding && (key == GLFW_KEY_LEFT || key == GLFW_KEY_BACKSPACE)) {
+
+            // Esc always goes back to the list instead of exiting to the game
+            if (!binding && key == GLFW_KEY_ESCAPE) {
                 closeInline();
                 return true;
             }
-            // Esc goes back to the Better Search list instead of exiting to game
-            if (!binding && key == GLFW_KEY_ESCAPE) {
+            // Left/Backspace only navigate back when the search box has no text,
+            // otherwise they must edit the query (deleting a character, etc).
+            boolean textActive = searchBox.isFocused() && !searchBox.get().isEmpty();
+            if (!binding && !textActive && (key == GLFW_KEY_LEFT || key == GLFW_KEY_BACKSPACE)) {
                 closeInline();
                 return true;
             }
