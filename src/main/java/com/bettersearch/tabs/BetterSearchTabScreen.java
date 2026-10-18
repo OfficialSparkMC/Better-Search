@@ -139,6 +139,12 @@ public class BetterSearchTabScreen extends TabScreen {
         // Default: pinned to the top under the Meteor top bar. "center-panel" moves it
         // to the middle of the screen for setups where the top is awkward to use.
         panelCentered = config() != null && config().centerPanel.get();
+        // A leftover drag offset from earlier in the session would keep the panel
+        // off-center even after switching placement, so drop it when centering.
+        if (panelCentered) {
+            savedDragX = 0;
+            savedDragY = 0;
+        }
         panelCell = add(panel).centerX();
         if (panelCentered) panelCell.centerY();
         else panelCell.top().marginTop(46);
@@ -221,8 +227,16 @@ public class BetterSearchTabScreen extends TabScreen {
             boolean center = cfg.centerPanel.get();
             if (center != panelCentered) {
                 panelCentered = center;
-                if (center) panelCell.centerY();
-                else panelCell.top().marginTop(46);
+                if (center) {
+                    // Clear any session drag offset so the panel is truly centered
+                    savedDragX = 0;
+                    savedDragY = 0;
+                    panel.dragX = 0;
+                    panel.dragY = 0;
+                    panelCell.centerY();
+                } else {
+                    panelCell.top().marginTop(46);
+                }
                 invalidate();
             }
         }
