@@ -56,6 +56,7 @@ public class BetterSearchTabScreen extends TabScreen {
     private WView scroll;
     private WVerticalList list;
     /** Inline settings menu lives here so the search list (and its scroll) stay intact. */
+    private WView menuScroll;
     private WVerticalList menuList;
 
     /** Flat list in display order for keyboard nav (grouped mode is flattened). */
@@ -180,11 +181,18 @@ public class BetterSearchTabScreen extends TabScreen {
         list.spacing = 2;
         scroll.add(list).expandX().widget();
 
-        // Inline settings menu: separate container, hidden until a module is right-clicked,
-        // so the results list is never rebuilt/destroyed while its menu is open.
+        // Inline settings menu: separate scrollable container, hidden until a module is
+        // right-clicked, so the results list is never rebuilt/destroyed while its menu
+        // is open. The WView caps its height, otherwise tall menus clip off-screen.
+        menuScroll = theme.view();
+        menuScroll.scrollOnlyWhenMouseOver = false;
+        menuScroll.hasScrollBar = true;
+        menuScroll.visible = false;
+        panel.add(menuScroll).expandX().widget();
+
         menuList = theme.verticalList();
-        menuList.visible = false;
-        panel.add(menuList).expandX().widget();
+        menuList.spacing = 2;
+        menuScroll.add(menuList).expandX().widget();
 
         refreshResults();
 
@@ -490,10 +498,8 @@ public class BetterSearchTabScreen extends TabScreen {
         inlineKeybind = null;
         inlineActiveBox = null;
         // Hide the menu and bring the untouched results list back (scroll/selection intact)
-        if (menuList != null) {
-            menuList.clear();
-            menuList.visible = false;
-        }
+        if (menuList != null) menuList.clear();
+        if (menuScroll != null) menuScroll.visible = false;
         if (scroll != null) scroll.visible = true;
         if (statusLabel != null) statusLabel.set(statusBeforeInline);
         searchBox.setFocused(true);
@@ -501,10 +507,10 @@ public class BetterSearchTabScreen extends TabScreen {
 
     private void showInline() {
         Module m = inlineModule;
-        if (m == null || menuList == null) return;
+        if (m == null || menuList == null || menuScroll == null) return;
         menuList.clear();
-        // Swap containers: menu visible, results list hidden (but kept alive)
-        menuList.visible = true;
+        // Swap containers: menu visible (scrollable), results list hidden (but kept alive)
+        menuScroll.visible = true;
         if (scroll != null) scroll.visible = false;
 
         if (statusLabel != null) {
