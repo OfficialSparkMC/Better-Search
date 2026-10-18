@@ -54,9 +54,11 @@ public class BetterSearchTabScreen extends TabScreen {
     /** Last applied panel placement, to relayout only when the setting changes. */
     private boolean panelCentered = false;
     private WView scroll;
+    private Cell<WView> scrollCell;
     private WVerticalList list;
     /** Inline settings menu lives here so the search list (and its scroll) stay intact. */
     private WView menuScroll;
+    private Cell<WView> menuScrollCell;
     private WVerticalList menuList;
 
     /** Flat list in display order for keyboard nav (grouped mode is flattened). */
@@ -181,31 +183,26 @@ public class BetterSearchTabScreen extends TabScreen {
         scroll = theme.view();
         scroll.scrollOnlyWhenMouseOver = false;
         scroll.hasScrollBar = true;
-        panel.add(scroll).expandX().widget();
+        scrollCell = panel.add(scroll).expandX();
 
         list = theme.verticalList();
         list.spacing = 2;
         scroll.add(list).expandX().widget();
 
-        // Inline settings menu: separate scrollable container, hidden until a module is
-        // right-clicked, so the results list is never rebuilt/destroyed while its menu
-        // is open. The WView caps its height, otherwise tall menus clip off-screen.
+        // Inline settings menu lives in its own view. It is kept OUT of the panel
+        // until a module is right-clicked: Meteor's layout counts hidden widgets
+        // too (only rendering checks `visible`), so hiding the results view would
+        // leave a phantom full-height gap that pushes the menu off-screen.
         menuScroll = theme.view();
+        menuScroll.theme = theme;
         menuScroll.scrollOnlyWhenMouseOver = false;
         menuScroll.hasScrollBar = true;
-        menuScroll.visible = false;
-        panel.add(menuScroll).expandX().widget();
 
         menuList = theme.verticalList();
         menuList.spacing = 2;
         menuScroll.add(menuList).expandX().widget();
 
-        // Cap both views well below the window height so the whole panel always fits:
-        // search box + status + top bar clearance + equal margins. Long lists/menus
-        // scroll instead of poking under the top bar or off the bottom of the screen.
-        double windowH = meteordevelopment.meteorclient.utils.Utils.getWindowHeight();
-        scroll.maxHeight = Math.max(theme.scale(120), windowH - theme.scale(300));
-        menuScroll.maxHeight = Math.max(theme.scale(120), windowH - theme.scale(340));
+        applyViewCaps();
 
         refreshResults();
 
@@ -214,6 +211,15 @@ public class BetterSearchTabScreen extends TabScreen {
         try {
             searchBox.setCursorMax();
         } catch (Exception ignored) {}
+    }
+
+    /** Cap both views so the panel always fits on screen; the rest scrolls. */
+    private void applyViewCaps() {
+        double windowH = meteordevelopment.meteorclient.utils.Utils.getWindowHeight();
+        double listCap = Math.max(theme.scale(120), windowH - theme.scale(300));
+        double menuCap = Math.max(theme.scale(120), windowH - theme.scale(340));
+        if (scroll != null) scroll.maxHeight = listCap;
+        if (menuScroll != null) menuScroll.maxHeight = menuCap;
     }
 
     private BetterSearchModule config() {
@@ -518,10 +524,16 @@ public class BetterSearchTabScreen extends TabScreen {
         inlineSettingsHolder = null;
         inlineKeybind = null;
         inlineActiveBox = null;
-        // Hide the menu and bring the untouched results list back (scroll/selection intact)
+        // Real layout swap back: menu view cell out, results view cell back in.
         if (menuList != null) menuList.clear();
-        if (menuScroll != null) menuScroll.visible = false;
-        if (scroll != null) scroll.visible = true;
+        if (menuScrollCell != null) {
+            panel.remove(menuScrollCell);
+            menuScrollCell = null;
+        }
+        if (scrollCell == null && panel != null) {
+            scrollCell = panel.add(scroll).expandX();
+            applyViewCaps();
+        }
         if (statusLabel != null) statusLabel.set(statusBeforeInline);
         searchBox.setFocused(true);
     }
@@ -529,15 +541,22 @@ public class BetterSearchTabScreen extends TabScreen {
     private void showInline() {
         Module m = inlineModule;
         if (m == null || menuList == null || menuScroll == null) return;
-        menuList.clear();
-        // Swap containers: menu visible (scrollable), results list hidden (but kept alive)
-        menuScroll.visible = true;
-        if (scroll != null) scroll.visible = false;
-
-        if (statusLabel != null) {
-            statusBeforeInline = statusLabel.get();
-            statusLabel.set("Settings: " + m.title + " — Esc or Backspace for list, or type to search");
+        // Real layout swap: results view cell out, menu view cell in. (Toggling
+        // `visible` is not enough — hidden widgets still count towards the
+        // panel's layout height, which is what pushed the menu off-screen.)
+        if (menuScrollCell == null) {
+            if (scrollCell != null) {
+                panel.remove(scrollCell);
+                scrollCell = null;
+            }
+            menuScrollCell = panel.add(menuScroll).expandX();
+            applyViewCaps();
+            if (statusLabel != null) {
+                statusBeforeInline = statusLabel.get();
+                statusLabel.set("Settings: " + m.title + " — Esc or Backspace for list, or type to search");
+            }
         }
+        menuList.clear();
 
         BetterSearchModule cfg = config();
         CardBack menu = new CardBack(theme);
