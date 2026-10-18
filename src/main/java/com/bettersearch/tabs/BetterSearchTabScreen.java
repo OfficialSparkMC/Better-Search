@@ -553,7 +553,7 @@ public class BetterSearchTabScreen extends TabScreen {
             applyViewCaps();
             if (statusLabel != null) {
                 statusBeforeInline = statusLabel.get();
-                statusLabel.set("Settings: " + m.title + " — Esc or Backspace for list, or type to search");
+                statusLabel.set("Settings: " + m.title + " — Esc for list, or type to search");
             }
         }
         menuList.clear();
@@ -679,15 +679,10 @@ public class BetterSearchTabScreen extends TabScreen {
                 binding = Modules.get().isBinding();
             } catch (Exception ignored) {}
 
-            // Esc always goes back to the list instead of exiting to the game
+            // Esc always goes back to the list instead of exiting to the game.
+            // Backspace/Delete/Left are never intercepted: they must always edit
+            // text (search box or settings), never close the menu.
             if (!binding && key == GLFW_KEY_ESCAPE) {
-                closeInline();
-                return true;
-            }
-            // Left/Backspace only navigate back when the search box has no text,
-            // otherwise they must edit the query (deleting a character, etc).
-            boolean textActive = searchBox.isFocused() && !searchBox.get().isEmpty();
-            if (!binding && !textActive && (key == GLFW_KEY_LEFT || key == GLFW_KEY_BACKSPACE)) {
                 closeInline();
                 return true;
             }
