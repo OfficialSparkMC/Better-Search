@@ -156,6 +156,13 @@ public class BetterSearchModule extends Module {
         .build()
     );
 
+    public final Setting<Boolean> centerPanel = sgAppearance.add(new BoolSetting.Builder()
+        .name("center-panel")
+        .description("Place the Search panel in the middle of the screen instead of the top.")
+        .defaultValue(true)
+        .build()
+    );
+
     public BetterSearchModule() {
         super(BetterSearchAddon.CATEGORY, "better-search", "Wurst-like Navigator search tab for all modules. Right-Ctrl opens it.", "navigator", "search", "find", "bs");
         keybind.set(true, GLFW_KEY_RIGHT_CONTROL, 0);

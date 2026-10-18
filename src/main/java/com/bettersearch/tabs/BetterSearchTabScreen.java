@@ -10,6 +10,7 @@ import meteordevelopment.meteorclient.gui.GuiTheme;
 import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
 import meteordevelopment.meteorclient.gui.tabs.Tab;
 import meteordevelopment.meteorclient.gui.tabs.TabScreen;
+import meteordevelopment.meteorclient.gui.utils.Cell;
 import meteordevelopment.meteorclient.gui.widgets.WLabel;
 import meteordevelopment.meteorclient.gui.widgets.WWidget;
 import meteordevelopment.meteorclient.gui.widgets.WKeybind;
@@ -49,6 +50,9 @@ public class BetterSearchTabScreen extends TabScreen {
     private WTextBox searchBox;
     private WLabel statusLabel;
     private WDragPanel panel;
+    private Cell<WDragPanel> panelCell;
+    /** Last applied panel placement, to relayout only when the setting changes. */
+    private boolean panelCentered = false;
     private WView scroll;
     private WVerticalList list;
     /** Inline settings menu lives here so the search list (and its scroll) stay intact. */
@@ -131,8 +135,12 @@ public class BetterSearchTabScreen extends TabScreen {
         panel = new WDragPanel();
         panel.theme = theme;
         panel.spacing = 6;
-        // Pin to the top under the Meteor top bar (add() defaults to vertical center).
-        add(panel).centerX().top().marginTop(46).widget();
+        // Default: pinned to the top under the Meteor top bar. "center-panel" moves it
+        // to the middle of the screen for setups where the top is awkward to use.
+        panelCentered = config() != null && config().centerPanel.get();
+        panelCell = add(panel).centerX();
+        if (panelCentered) panelCell.centerY();
+        else panelCell.top().marginTop(46);
         panel.minWidth = 500;
         panel.dragX = savedDragX;
         panel.dragY = savedDragY;
@@ -199,6 +207,17 @@ public class BetterSearchTabScreen extends TabScreen {
         if (list == null || searchBox == null) return;
 
         BetterSearchModule cfg = config();
+
+        // Live placement switch (top <-> center) without reopening the screen
+        if (panelCell != null && cfg != null) {
+            boolean center = cfg.centerPanel.get();
+            if (center != panelCentered) {
+                panelCentered = center;
+                if (center) panelCell.centerY();
+                else panelCell.top().marginTop(46);
+                invalidate();
+            }
+        }
 
         // Customizable sizes (also applied in inline mode so layout stays stable)
         int panelWidth = appearancePanelWidth(cfg);
@@ -687,7 +706,7 @@ public class BetterSearchTabScreen extends TabScreen {
             // super() works in scaled widget units, so scale deltas the same way
             double s = meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor();
             double nx = clamp(savedDragX + (mouseX - lastMoveX) * s, -420, 420);
-            double ny = clamp(savedDragY + (mouseY - lastMoveY) * s, -40, 420);
+            double ny = clamp(savedDragY + (mouseY - lastMoveY) * s, 0, 420);
             panel.move(nx - savedDragX, ny - savedDragY);
             savedDragX = nx;
             savedDragY = ny;
