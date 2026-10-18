@@ -200,6 +200,13 @@ public class BetterSearchTabScreen extends TabScreen {
         menuList.spacing = 2;
         menuScroll.add(menuList).expandX().widget();
 
+        // Cap both views well below the window height so the whole panel always fits:
+        // search box + status + top bar clearance + equal margins. Long lists/menus
+        // scroll instead of poking under the top bar or off the bottom of the screen.
+        double windowH = meteordevelopment.meteorclient.utils.Utils.getWindowHeight();
+        scroll.maxHeight = Math.max(theme.scale(120), windowH - theme.scale(300));
+        menuScroll.maxHeight = Math.max(theme.scale(120), windowH - theme.scale(340));
+
         refreshResults();
 
         // Cursor first: focus search immediately so typing filters instantly
