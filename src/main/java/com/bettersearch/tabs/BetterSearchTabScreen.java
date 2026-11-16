@@ -27,9 +27,8 @@ import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.input.KeyInput;
-
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -669,7 +668,7 @@ public class BetterSearchTabScreen extends TabScreen {
     }
 
     @Override
-    public boolean keyPressed(KeyInput input) {
+    public boolean keyPressed(KeyEvent input) {
         int key = input.key();
 
         if (inlineModule != null) {
@@ -716,10 +715,10 @@ public class BetterSearchTabScreen extends TabScreen {
     // Screen-level panel dragging (robust: direct move, no relayout fight)
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
+    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
         if (dragHandle != null) {
             try {
-                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
+                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getGuiScale());
                 if (click.button() == GLFW_MOUSE_BUTTON_LEFT && dragHandle.isOver(click.x() * s, click.y() * s)) {
                     draggingPanel = true;
                     return true;
@@ -728,14 +727,14 @@ public class BetterSearchTabScreen extends TabScreen {
         }
         // Fresh hover for the whole panel so stationary clicks hit rebuilt widgets
         try {
-            double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
+            double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getGuiScale());
             if (panel != null) panel.mouseMoved(click.x() * s, click.y() * s, click.x() * s, click.y() * s);
         } catch (Exception ignored) {}
         return super.mouseClicked(click, doubled);
     }
 
     @Override
-    public boolean mouseReleased(Click click) {
+    public boolean mouseReleased(MouseButtonEvent click) {
         draggingPanel = false;
         return super.mouseReleased(click);
     }
@@ -745,7 +744,7 @@ public class BetterSearchTabScreen extends TabScreen {
         super.mouseMoved(mouseX, mouseY);
         if (draggingPanel && panel != null && hasLastMove) {
             // super() works in scaled widget units, so scale deltas the same way
-            double s = meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor();
+            double s = meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getGuiScale();
             double nx = clamp(savedDragX + (mouseX - lastMoveX) * s, -420, 420);
             double ny = clamp(savedDragY + (mouseY - lastMoveY) * s, 0, 420);
             panel.move(nx - savedDragX, ny - savedDragY);
@@ -798,12 +797,12 @@ public class BetterSearchTabScreen extends TabScreen {
         }
 
         @Override
-        public void render(net.minecraft.client.gui.DrawContext context, int mouseX, int mouseY, float delta) {
+        public void render(net.minecraft.client.gui.GuiGraphics context, int mouseX, int mouseY, float delta) {
             super.render(context, mouseX, mouseY, delta);
             // Yellow outline around Meteor's outer window.
             // Widget coords are raw pixels; DrawContext works in scaled units.
             try {
-                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getScaleFactor());
+                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getGuiScale());
                 int pad = 3;
                 int x = (int) Math.floor(window.x / s) - pad;
                 int y = (int) Math.floor(window.y / s) - pad;

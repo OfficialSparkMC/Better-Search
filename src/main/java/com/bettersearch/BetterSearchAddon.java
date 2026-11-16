@@ -9,12 +9,12 @@ import meteordevelopment.meteorclient.commands.Commands;
 import meteordevelopment.meteorclient.gui.tabs.Tabs;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Modules;
-import net.minecraft.item.Items;
+import net.minecraft.world.item.Items;
 import org.slf4j.Logger;
 
 public class BetterSearchAddon extends MeteorAddon {
     public static final Logger LOG = LogUtils.getLogger();
-    public static final Category CATEGORY = new Category("Better Search", Items.COMPASS.getDefaultStack());
+    public static final Category CATEGORY = new Category("Better Search", Items.COMPASS.getDefaultInstance());
 
     @Override
     public void onInitialize() {
