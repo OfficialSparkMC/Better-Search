@@ -29,8 +29,9 @@
     }
   },
   "depends": {
-    "java": ">=21",
+    "java": ">=25",
     "minecraft": ["${mc_version}"],
+    "fabricloader": ">=0.19.5",
     "meteor-client": "*"
   }
 }

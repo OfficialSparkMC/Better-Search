@@ -6,7 +6,7 @@ import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import net.minecraft.client.input.MouseButtonEvent;
 
-import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_RIGHT;
+import static com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT;
 
 /**
  * Clean rounded card: background + optional outline ring drawn with Meteor's
@@ -36,7 +36,7 @@ public class CardBack extends WVerticalList {
     public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
         // Right click opens our settings and never reaches Meteor's own window.
         // Stateless hit-test per event — nothing stored, nothing that can go stale.
-        if (click.button() == GLFW_MOUSE_BUTTON_RIGHT && isOver(click.x(), click.y())) {
+        if (click.button() == MOUSE_BUTTON_RIGHT && isOver(click.x(), click.y())) {
             if (onSettings != null) onSettings.run();
             return true;
         }

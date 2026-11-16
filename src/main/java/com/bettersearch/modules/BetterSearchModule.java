@@ -13,7 +13,7 @@ import meteordevelopment.meteorclient.settings.Setting;
 import meteordevelopment.meteorclient.settings.SettingGroup;
 import meteordevelopment.meteorclient.systems.modules.Module;
 
-import static org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_CONTROL;
+import static com.mojang.blaze3d.platform.InputConstants.KEY_RCONTROL;
 
 /**
  * Wurst-Navigator-style module search.
@@ -165,7 +165,7 @@ public class BetterSearchModule extends Module {
 
     public BetterSearchModule() {
         super(BetterSearchAddon.CATEGORY, "better-search", "Wurst-like Navigator search tab for all modules. Right-Ctrl opens it.", "navigator", "search", "find", "bs");
-        keybind.set(true, GLFW_KEY_RIGHT_CONTROL, 0);
+        keybind.set(true, KEY_RCONTROL, 0);
         chatFeedback = false;
         UsageTracker.load();
     }
@@ -175,7 +175,7 @@ public class BetterSearchModule extends Module {
         try {
             Tab tab = Tabs.get(BetterSearchTab.class);
             if (tab != null) tab.openScreen(GuiThemes.get());
-            else mc.setScreen(new com.bettersearch.tabs.BetterSearchTabScreen(GuiThemes.get(), new BetterSearchTab()));
+            else mc.gui.setScreen(new com.bettersearch.tabs.BetterSearchTabScreen(GuiThemes.get(), new BetterSearchTab()));
         } finally {
             // Momentary button like Wurst Navigator: stay unbound-toggled
             if (isActive()) toggle();

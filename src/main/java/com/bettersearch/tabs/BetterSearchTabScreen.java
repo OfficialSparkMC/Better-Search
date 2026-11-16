@@ -33,7 +33,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import static org.lwjgl.glfw.GLFW.*;
+import static com.mojang.blaze3d.platform.InputConstants.*;
 
 /**
  * Modern, clean, fixed (non-draggable) Navigator tab, Wurst-style.
@@ -502,7 +502,7 @@ public class BetterSearchTabScreen extends TabScreen {
         if (!inline) {
             UsageTracker.record(m);
             UsageTracker.save();
-            meteordevelopment.meteorclient.MeteorClient.mc.setScreen(new OutlinedModuleScreen(theme, m));
+            meteordevelopment.meteorclient.MeteorClient.mc.gui.setScreen(new OutlinedModuleScreen(theme, m));
             return;
         }
         UsageTracker.record(m);
@@ -681,28 +681,28 @@ public class BetterSearchTabScreen extends TabScreen {
             // Esc always goes back to the list instead of exiting to the game.
             // Backspace/Delete/Left are never intercepted: they must always edit
             // text (search box or settings), never close the menu.
-            if (!binding && key == GLFW_KEY_ESCAPE) {
+            if (!binding && key == KEY_ESCAPE) {
                 closeInline();
                 return true;
             }
             return super.keyPressed(input);
         }
 
-        if (key == GLFW_KEY_DOWN) {
+        if (key == KEY_DOWN) {
             moveSelection(1);
             return true;
         }
-        if (key == GLFW_KEY_UP) {
+        if (key == KEY_UP) {
             moveSelection(-1);
             return true;
         }
-        if (key == GLFW_KEY_ENTER || key == GLFW_KEY_KP_ENTER) {
+        if (key == KEY_RETURN || key == KEY_NUMPADENTER) {
             if (!current.isEmpty()) {
                 toggleSelected();
                 return true;
             }
         }
-        if (key == GLFW_KEY_RIGHT) {
+        if (key == KEY_RIGHT) {
             if (!current.isEmpty()) {
                 openSelectedSettings();
                 return true;
@@ -719,7 +719,7 @@ public class BetterSearchTabScreen extends TabScreen {
         if (dragHandle != null) {
             try {
                 double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getGuiScale());
-                if (click.button() == GLFW_MOUSE_BUTTON_LEFT && dragHandle.isOver(click.x() * s, click.y() * s)) {
+                if (click.button() == MOUSE_BUTTON_LEFT && dragHandle.isOver(click.x() * s, click.y() * s)) {
                     draggingPanel = true;
                     return true;
                 }
@@ -796,30 +796,31 @@ public class BetterSearchTabScreen extends TabScreen {
             window.invalidate();
         }
 
+        /**
+         * Yellow outline around Meteor's outer window.
+         * Widget coords are raw pixels, so the outline is drawn with Meteor's raw-pixel
+         * renderer from onRenderBefore (the 26.x replacement for the old render() hook).
+         * The ring sits entirely outside the window bounds, so the window itself —
+         * drawn afterwards — never paints over it.
+         */
         @Override
-        public void render(net.minecraft.client.gui.GuiGraphics context, int mouseX, int mouseY, float delta) {
-            super.render(context, mouseX, mouseY, delta);
-            // Yellow outline around Meteor's outer window.
-            // Widget coords are raw pixels; DrawContext works in scaled units.
+        protected void onRenderBefore(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
             try {
-                double s = Math.max(1, meteordevelopment.meteorclient.MeteorClient.mc.getWindow().getGuiScale());
-                int pad = 3;
-                int x = (int) Math.floor(window.x / s) - pad;
-                int y = (int) Math.floor(window.y / s) - pad;
-                int w = (int) Math.ceil(window.width / s) + pad * 2;
-                int h = (int) Math.ceil(window.height / s) + pad * 2;
-                int yellow = 0xFF888888;
-                int t = 2;
-                // Outer 2px ring
-                context.fill(x - 2, y - 2, x + w + 2, y, yellow);
-                context.fill(x - 2, y + h, x + w + 2, y + h + 2, yellow);
-                context.fill(x - 2, y, x, y + h, yellow);
-                context.fill(x + w, y, x + w + 2, y + h, yellow);
-                // Inner 2px ring
-                context.fill(x, y, x + w, y + t, yellow);
-                context.fill(x, y + h - t, x + w, y + h, yellow);
-                context.fill(x, y, x + t, y + h, yellow);
-                context.fill(x + w - t, y, x + w, y + h, yellow);
+                double pad = 3, t = 2;
+                double x = window.x - pad;
+                double y = window.y - pad;
+                double w = window.width + pad * 2;
+                double h = window.height + pad * 2;
+                Color yellow = new Color(255, 212, 0, 255); // proper yellow (was gray 0xFF888888)
+                var r2d = meteordevelopment.meteorclient.renderer.Renderer2D.COLOR;
+                r2d.begin();
+                // Ring sits entirely outside the window bounds, so the window — drawn
+                // afterwards — never paints over it
+                r2d.quad(x - t, y - t, w + t * 2, t, yellow); // top
+                r2d.quad(x - t, y + h, w + t * 2, t, yellow); // bottom
+                r2d.quad(x - t, y, t, h, yellow); // left
+                r2d.quad(x + w, y, t, h, yellow); // right
+                r2d.render();
             } catch (Exception ignored) {}
         }
     }

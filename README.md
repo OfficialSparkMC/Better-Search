@@ -1,5 +1,5 @@
 # Better Search
-A Meteor Client addon (Minecraft 1.21.11) that adds a proper `Search` tab to the ClickGUI.
+A Meteor Client addon (Minecraft 26.3) that adds a proper `Search` tab to the ClickGUI.
 
 
 <img src="src/main/resources/assets/Screenshots/BetterSearch.png" alt="Better Search">
@@ -21,8 +21,8 @@ A Meteor Client addon (Minecraft 1.21.11) that adds a proper `Search` tab to the
 
 ## Install
 
-1. Minecraft 1.21.11 with Fabric Loader 0.18.2.
-2. Meteor Client for 1.21.11 in `mods/`.
+1. Minecraft 26.3 with Fabric Loader 0.19.5 (Java 25).
+2. Meteor Client for 26.3 in `mods/`.
 3. Drop the `better-search-*.jar` from this repo's `build/libs/` into `mods/` too.
 4. Open Meteor with `Right Shift`, click the **Search** tab. Or just press `Right-Ctrl`.
 
@@ -48,7 +48,7 @@ For addon devs: annotate your modules with `@SearchTags({"alias", "synonym"})` f
 
 ## Build it yourself
 
-Needs Java 21.
+Needs Java 25 (the minimum for Minecraft 26.3).
 
 ```bash
 ./gradlew build
@@ -60,7 +60,9 @@ Jar lands in `build/libs/`. For a live dev client:
 ./gradlew runClient
 ```
 
-Pinned versions: MC 1.21.11, Yarn `1.21.11+build.3`, Loader 0.18.2, Loom 1.14, Meteor `1.21.11-SNAPSHOT` (see `gradle/libs.versions.toml`).
+Pinned versions: MC 26.3, Fabric Loader 0.19.5, Gradle 9.8.1, Loom 1.18.4 (`net.fabricmc.fabric-loom`), Meteor `26.3-SNAPSHOT` (see `gradle/libs.versions.toml`).
+
+Minecraft 26.x is unobfuscated: there is no Yarn/mappings step — the game ships with Mojang's names. Sources migrated with Loom's `migrateMappings`, and mod dependencies use plain `implementation` instead of `modImplementation`.
 
 ## License
 
